@@ -29,9 +29,9 @@ const BASE_SPAWN_POSITIONS = [
 
 
 func _ready() -> void:
-	print("=" * 60)
+	print("============================================================")
 	print("=== GAMEWORLD STARTING ===")
-	print("=" * 60)
+	print("============================================================")
 	print("GameWorld initialized")
 
 	# Debug: Show active players
@@ -59,7 +59,7 @@ func _ready() -> void:
 	_create_minimap()
 
 	print("=== GAMEWORLD READY ===")
-	print("=" * 60)
+	print("============================================================")
 
 
 ## Setup split-screen viewports based on number of players
