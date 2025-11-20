@@ -105,6 +105,7 @@ func _get_default_controller_bindings() -> Dictionary:
 ## Check if a specific action is pressed for a player
 func is_action_pressed(player_index: int, action: String) -> bool:
 	if not player_mappings.has(player_index):
+		print("DEBUG: Player %d not in mappings" % player_index)
 		return false
 
 	var mapping = player_mappings[player_index]
@@ -113,7 +114,16 @@ func is_action_pressed(player_index: int, action: String) -> bool:
 	# Keyboard + Mouse
 	if device == InputDevice.KEYBOARD_MOUSE:
 		var action_name = "p%d_%s" % [player_index, action]
-		return Input.is_action_pressed(action_name)
+		var result = Input.is_action_pressed(action_name)
+
+		# Debug for attack action
+		if action == "attack":
+			print("DEBUG: Checking action '%s', result=%s, InputMap.has_action=%s" % [action_name, result, InputMap.has_action(action_name)])
+			# Also check raw mouse input
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+				print("DEBUG: Raw mouse button IS pressed!")
+
+		return result
 
 	# Controller
 	else:
