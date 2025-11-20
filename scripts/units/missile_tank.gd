@@ -60,7 +60,7 @@ func _find_best_target_in_range():
 ## Missile tanks can ONLY attack flying units
 func _can_target_unit(unit) -> bool:
 	# Can ONLY attack flying/air units
-	if unit.has("is_flying") and unit.is_flying:
+	if "is_flying" in unit and unit.is_flying:
 		return true
 
 	return false
@@ -68,7 +68,7 @@ func _can_target_unit(unit) -> bool:
 
 ## Get priority score for a unit
 func _get_unit_priority(unit) -> int:
-	if unit.has("unit_type"):
+	if "unit_type" in unit:
 		match unit.unit_type:
 			"transformer_hero":
 				# Only if in plane mode (flying)
@@ -84,7 +84,7 @@ func _get_unit_priority(unit) -> int:
 
 ## Check if entity is an enemy
 func _is_enemy(entity) -> bool:
-	if not entity.has("team_color"):
+	if not "team_color" in entity:
 		return false
 
 	return entity.team_color != team_color

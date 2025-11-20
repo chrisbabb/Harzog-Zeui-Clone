@@ -74,7 +74,7 @@ func _find_best_target_in_range():
 ## Check if this unit can target another unit
 func _can_target_unit(unit) -> bool:
 	# Ground soldiers cannot attack air units
-	if unit.has("is_flying") and unit.is_flying:
+	if "is_flying" in unit and unit.is_flying:
 		return false
 
 	return true
@@ -82,7 +82,7 @@ func _can_target_unit(unit) -> bool:
 
 ## Get priority score for a unit
 func _get_unit_priority(unit) -> int:
-	if unit.has("unit_type"):
+	if "unit_type" in unit:
 		match unit.unit_type:
 			"transformer_hero":
 				return PRIORITY_ENEMY_HERO_GROUND
@@ -102,7 +102,7 @@ func _get_unit_priority(unit) -> int:
 
 ## Check if entity is an enemy
 func _is_enemy(entity) -> bool:
-	if not entity.has("team_color"):
+	if not "team_color" in entity:
 		return false
 
 	return entity.team_color != team_color

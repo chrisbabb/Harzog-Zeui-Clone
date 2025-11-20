@@ -95,9 +95,9 @@ func _is_valid_target(target) -> bool:
 
 ## Get position of a target
 func _get_target_position(target) -> Vector2:
-	if target.has("global_position"):
+	if "global_position" in target:
 		return target.global_position
-	elif target.has("position"):
+	elif "position" in target:
 		return target.position
 	return Vector2.ZERO
 

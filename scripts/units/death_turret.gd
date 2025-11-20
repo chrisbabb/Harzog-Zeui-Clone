@@ -85,7 +85,7 @@ func _find_best_target_in_range():
 
 ## Get priority score for a unit
 func _get_unit_priority(unit) -> int:
-	if unit.has("unit_type"):
+	if "unit_type" in unit:
 		match unit.unit_type:
 			"transformer_hero":
 				return PRIORITY_ENEMY_HERO
@@ -101,7 +101,7 @@ func _get_unit_priority(unit) -> int:
 
 ## Get priority score for a turret
 func _get_turret_priority(turret) -> int:
-	if turret.has("unit_type"):
+	if "unit_type" in turret:
 		match turret.unit_type:
 			"death_turret":
 				return PRIORITY_ENEMY_DEATH_TURRET
@@ -113,7 +113,7 @@ func _get_turret_priority(turret) -> int:
 
 ## Check if entity is an enemy
 func _is_enemy(entity) -> bool:
-	if not entity.has("team_color"):
+	if not "team_color" in entity:
 		return false
 
 	return entity.team_color != team_color
