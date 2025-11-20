@@ -31,6 +31,7 @@ func _ready() -> void:
 	hero.player_controlled = true
 	print("=== Player %d controller enabled for %s ===" % [player_index, hero.unit_name])
 	print("PlayerController is ACTIVE and ready")
+	print("VERSION: 2025-11-20-FIX")
 
 
 func _process(_delta: float) -> void:
