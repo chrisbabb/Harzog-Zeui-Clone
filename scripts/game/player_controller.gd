@@ -49,9 +49,14 @@ func _process(_delta: float) -> void:
 	if InputManager.is_action_just_pressed(player_index, "build_menu"):
 		_open_build_menu()
 
-	# Handle attack
-	if InputManager.is_action_just_pressed(player_index, "attack"):
-		_try_attack()
+	# Handle continuous attack - hold button to keep attacking
+	if InputManager.is_action_pressed(player_index, "attack"):
+		_handle_player_attack(_delta)
+	else:
+		# Clear target when not attacking
+		if hero.current_state == hero.State.ENGAGING_TARGET:
+			hero.current_target = null
+			hero.current_state = hero.State.IDLE
 
 
 func _physics_process(_delta: float) -> void:
@@ -96,16 +101,28 @@ func _try_pickup() -> void:
 	print("Player %d: No friendly base nearby to pickup from" % player_index)
 
 
-## Try to attack nearest enemy
-func _try_attack() -> void:
-	# Find nearest enemy and set as target
-	var best_target = hero._find_best_target_in_range()
-	if best_target:
-		hero.current_target = best_target
-		hero.current_state = hero.State.ENGAGING_TARGET
-		print("Player %d: Attacking target!" % player_index)
+## Handle player attack (called continuously while attack button held)
+func _handle_player_attack(delta: float) -> void:
+	# Update retarget timer
+	hero.time_since_retarget += delta
+	if hero.time_since_retarget >= hero.RETARGET_INTERVAL:
+		hero.time_since_retarget = 0.0
+		# Find and acquire new target
+		var best_target = hero._find_best_target_in_range()
+		if best_target:
+			hero.current_target = best_target
+			hero.current_state = hero.State.ENGAGING_TARGET
+
+	# If we have a target, attack it
+	if hero.current_target and hero._is_valid_target(hero.current_target):
+		var target_pos = hero._get_target_position(hero.current_target)
+		var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, target_pos)
+
+		# If target is in attack range, attack
+		if dist_sq <= hero.attack_range * hero.attack_range:
+			hero._attack_target(delta)
 	else:
-		print("Player %d: No valid targets in range" % player_index)
+		hero.current_target = null
 
 
 ## Open build menu

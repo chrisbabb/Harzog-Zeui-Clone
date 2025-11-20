@@ -79,6 +79,9 @@ func _spawn_players_and_bases() -> void:
 		var hero = _create_transformer_hero(player, spawn_pos + Vector2(100, 0))
 		$Units.add_child(hero)
 
+		# Set main base reference for respawning
+		hero.set_main_base(base)
+
 		# Attach camera to hero
 		if i < player_cameras.size():
 			var camera = player_cameras[i]

@@ -20,6 +20,11 @@ var current_form: Form = Form.HUMANOID
 var packaged_units_carried: Array = []
 @export var max_packaged_units: int = 3
 
+# Respawn system
+var main_base = null  # Reference to player's main base for respawning
+var respawn_delay: float = 3.0  # Seconds before respawn
+var is_respawning: bool = false
+
 # Form-specific stats
 var humanoid_stats = {
 	"move_speed": 150.0,
@@ -252,3 +257,65 @@ func _choose_strategic_target() -> Vector2:
 			return nearest_base.global_position
 
 	return global_position
+
+
+## Override die to respawn instead of being destroyed
+func _die() -> void:
+	if is_respawning:
+		return  # Already respawning
+
+	current_state = State.DEAD
+	is_respawning = true
+
+	print("%s killed! Respawning in %.1f seconds..." % [unit_name, respawn_delay])
+
+	# Hide the hero temporarily
+	visible = false
+
+	# Disable collision
+	set_physics_process(false)
+
+	# Start respawn timer
+	await get_tree().create_timer(respawn_delay).timeout
+
+	_respawn()
+
+
+## Respawn the hero at their main base
+func _respawn() -> void:
+	if not is_instance_valid(main_base):
+		push_error("Cannot respawn - main base not found!")
+		queue_free()
+		return
+
+	# Reset health
+	current_health = max_health
+	_update_health_bar()
+
+	# Reset position to main base
+	global_position = main_base.global_position + Vector2(100, 0)
+
+	# Reset form to humanoid
+	if current_form == Form.PLANE:
+		_transform_to_humanoid()
+
+	# Clear carried units
+	packaged_units_carried.clear()
+
+	# Clear target
+	current_target = null
+
+	# Reset state
+	current_state = State.IDLE
+	is_respawning = false
+
+	# Re-enable
+	visible = true
+	set_physics_process(true)
+
+	print("%s respawned at main base!" % unit_name)
+
+
+## Set main base reference (called during initialization)
+func set_main_base(base) -> void:
+	main_base = base
