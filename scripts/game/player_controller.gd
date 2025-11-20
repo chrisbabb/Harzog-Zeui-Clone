@@ -15,6 +15,9 @@ class_name PlayerController
 
 var hero: TransformerHero = null
 
+# Bullet scene
+const BulletScene = preload("res://scenes/projectiles/bullet.tscn")
+
 
 func _ready() -> void:
 	# Get reference to the hero this controller is attached to
@@ -132,59 +135,30 @@ func _handle_player_attack(delta: float) -> void:
 	_shoot_in_direction()
 
 
-## Shoot in the direction the player is aiming (mouse direction)
+## Shoot in the direction the player is aiming (spawns bullet projectile)
 func _shoot_in_direction() -> void:
-	# Find all potential targets
-	var all_units = get_tree().get_nodes_in_group("units")
-	var all_buildings = get_tree().get_nodes_in_group("buildings")
-	var all_entities = all_units + all_buildings
+	# Create bullet
+	var bullet = BulletScene.instantiate()
 
-	var best_target = null
-	var best_score = -1.0
+	# Initialize bullet
+	bullet.initialize(
+		hero.global_position,
+		hero.aim_direction,
+		hero.attack_damage,
+		hero.attack_range,
+		hero.team_color,
+		hero
+	)
 
-	# Check each entity to see if it's in our aim cone
-	for entity in all_entities:
-		if entity == hero:
-			continue
-
-		if not hero._is_enemy(entity):
-			continue
-
-		if entity.has_method("is_dead") and entity.is_dead():
-			continue
-
-		# Check if entity can be targeted based on form
-		if "is_flying" in entity:
-			if hero.current_form == hero.Form.HUMANOID and entity.is_flying:
-				continue  # Humanoid can't target air units
-
-		# Get direction to entity
-		var entity_pos = entity.global_position if "global_position" in entity else entity.position
-		var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, entity_pos)
-
-		# Check if in range
-		if dist_sq > hero.attack_range * hero.attack_range:
-			continue
-
-		# Calculate direction to entity
-		var dir_to_entity = ToroidalWorld.toroidal_direction(hero.global_position, entity_pos).normalized()
-
-		# Calculate dot product (how aligned with aim direction)
-		var alignment = hero.aim_direction.dot(dir_to_entity)
-
-		# Only consider entities in front of us (alignment > 0.5 means within ~60 degree cone)
-		if alignment > 0.5:
-			# Score based on alignment and distance (prefer closer, more aligned targets)
-			var score = alignment * 2.0 - (sqrt(dist_sq) / hero.attack_range)
-			if score > best_score:
-				best_score = score
-				best_target = entity
-
-	# Attack the best target if found
-	if best_target:
-		if best_target.has_method("take_damage"):
-			best_target.take_damage(hero.attack_damage)
-			print("Player %d hit target for %.0f damage!" % [player_index, hero.attack_damage])
+	# Add bullet to game world (find the game world node)
+	var game_world = get_tree().root.get_node_or_null("GameWorld")
+	if game_world:
+		# Try to add to Projectiles group, or just to game world
+		var projectiles_node = game_world.get_node_or_null("Projectiles")
+		if projectiles_node:
+			projectiles_node.add_child(bullet)
+		else:
+			game_world.add_child(bullet)
 
 
 ## Open build menu
