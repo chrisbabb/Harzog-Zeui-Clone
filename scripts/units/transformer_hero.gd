@@ -69,9 +69,9 @@ func _transform_to_plane() -> void:
 	current_form = Form.PLANE
 	is_flying = true
 	_apply_form_stats()
+	_update_visual()
 	print("%s transformed to PLANE mode" % unit_name)
 	# TODO: Play transformation animation
-	# TODO: Change sprite/visual
 
 
 ## Transform to humanoid mode (ground unit)
@@ -85,9 +85,28 @@ func _transform_to_humanoid() -> void:
 		print("Warning: Transforming to humanoid - dropping %d packaged units" % packaged_units_carried.size())
 		packaged_units_carried.clear()
 
+	_update_visual()
 	print("%s transformed to HUMANOID mode" % unit_name)
 	# TODO: Play transformation animation
-	# TODO: Change sprite/visual
+
+
+## Update visual appearance based on current form
+func _update_visual() -> void:
+	# Update form label if it exists
+	if has_node("FormLabel"):
+		var label = get_node("FormLabel")
+		if current_form == Form.PLANE:
+			label.text = "PLANE"
+		else:
+			label.text = "HUMANOID"
+
+	# Update color based on form
+	if has_node("Visual"):
+		var visual = get_node("Visual")
+		if current_form == Form.PLANE:
+			visual.color = Color(0.7, 0.9, 1.0, 1.0)  # Light blue for plane
+		else:
+			visual.color = Color(0.9, 0.7, 0.2, 1.0)  # Gold for humanoid
 
 
 ## Apply stats based on current form

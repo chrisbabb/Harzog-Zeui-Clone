@@ -44,82 +44,14 @@ func _ready() -> void:
 ## Setup split-screen viewports based on number of players
 func _setup_split_screen() -> void:
 	var num_players = GameManager.active_players.size()
-	var container = $SplitScreenContainer
 
-	match num_players:
-		1:
-			_create_single_viewport(container)
-		2:
-			_create_dual_viewports(container)
-		3, 4:
-			_create_quad_viewports(container, num_players)
-
-
-## Create single fullscreen viewport (1 player)
-func _create_single_viewport(container: Control) -> void:
-	var viewport = SubViewportContainer.new()
-	viewport.set_anchors_preset(Control.PRESET_FULL_RECT)
-	viewport.stretch = true
-
-	var subviewport = SubViewport.new()
-	subviewport.size = Vector2i(1920, 1080)
-	viewport.add_child(subviewport)
-
-	var camera = Camera2D.new()
-	camera.enabled = true
-	subviewport.add_child(camera)
-
-	container.add_child(viewport)
-	player_viewports.append(subviewport)
-	player_cameras.append(camera)
-
-
-## Create dual horizontal split viewports (2 players)
-func _create_dual_viewports(container: Control) -> void:
-	for i in range(2):
-		var viewport = SubViewportContainer.new()
-		viewport.anchor_top = 0.0
-		viewport.anchor_bottom = 1.0
-		viewport.anchor_left = 0.0 if i == 0 else 0.5
-		viewport.anchor_right = 0.5 if i == 0 else 1.0
-		viewport.stretch = true
-
-		var subviewport = SubViewport.new()
-		subviewport.size = Vector2i(960, 1080)
-		viewport.add_child(subviewport)
-
-		var camera = Camera2D.new()
-		camera.enabled = true
-		subviewport.add_child(camera)
-
-		container.add_child(viewport)
-		player_viewports.append(subviewport)
-		player_cameras.append(camera)
-
-
-## Create quad split viewports (3-4 players)
-func _create_quad_viewports(container: Control, num_players: int) -> void:
+	# Simplified for now - just create cameras
+	# TODO: Implement proper split-screen with SubViewports for 2+ players
 	for i in range(num_players):
-		var row = i / 2
-		var col = i % 2
-
-		var viewport = SubViewportContainer.new()
-		viewport.anchor_left = 0.0 if col == 0 else 0.5
-		viewport.anchor_right = 0.5 if col == 0 else 1.0
-		viewport.anchor_top = 0.0 if row == 0 else 0.5
-		viewport.anchor_bottom = 0.5 if row == 0 else 1.0
-		viewport.stretch = true
-
-		var subviewport = SubViewport.new()
-		subviewport.size = Vector2i(960, 540)
-		viewport.add_child(subviewport)
-
 		var camera = Camera2D.new()
-		camera.enabled = true
-		subviewport.add_child(camera)
-
-		container.add_child(viewport)
-		player_viewports.append(subviewport)
+		camera.enabled = (i == 0)  # Only first camera enabled for now
+		camera.name = "Camera2D_P%d" % (i + 1)
+		add_child(camera)
 		player_cameras.append(camera)
 
 
@@ -166,21 +98,26 @@ func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
 
 
 ## Create a transformer hero for a player
-func _create_transformer_hero(player: Dictionary, position: Vector2) -> Node2D:
-	# TODO: Load actual hero scene
-	var hero = CharacterBody2D.new()
-	hero.position = position
-	hero.set_meta("owner_slot", player.slot_index)
-	hero.set_meta("team_color", player.color)
-	hero.add_to_group("units")
-	hero.add_to_group("heroes")
+func _create_transformer_hero(player: Dictionary, position: Vector2) -> TransformerHero:
+	# Load the actual TransformerHero scene
+	var hero_scene = preload("res://scenes/units/transformer_hero.tscn")
+	var hero = hero_scene.instantiate() as TransformerHero
 
-	# Add visual representation (placeholder)
-	var sprite = ColorRect.new()
-	sprite.size = Vector2(40, 40)
-	sprite.position = Vector2(-20, -20)
-	sprite.color = _get_color_from_string(player.color)
-	hero.add_child(sprite)
+	hero.position = position
+	hero.set_owner_info(player.slot_index, player.color)
+
+	# Color the hero based on team
+	if hero.has_node("Visual"):
+		var visual = hero.get_node("Visual")
+		visual.color = _get_color_from_string(player.color)
+
+	# If this is a human player, attach a PlayerController
+	if player.type == "Human":
+		var controller = preload("res://scripts/game/player_controller.gd").new()
+		controller.player_index = player.slot_index
+		controller.name = "PlayerController"
+		hero.add_child(controller)
+		print("Added PlayerController for Player %d (Human)" % player.slot_index)
 
 	return hero
 
