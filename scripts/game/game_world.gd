@@ -16,6 +16,9 @@ extends Node2D
 var player_viewports: Array = []
 var player_cameras: Array = []
 
+# UI elements
+var minimap: Control = null
+
 # Spawn positions for main bases (one for each player)
 const BASE_SPAWN_POSITIONS = [
 	Vector2(500, 500),      # Player 1
@@ -42,6 +45,9 @@ func _ready() -> void:
 
 	# Spawn test enemies for each player
 	_spawn_test_enemies()
+
+	# Create minimap UI
+	_create_minimap()
 
 
 ## Setup split-screen viewports based on number of players
@@ -205,6 +211,31 @@ func _spawn_unit(unit_type: String, position: Vector2, owner_slot: int, team_col
 		visual.color = _get_color_from_string(team_color)
 
 	return unit
+
+
+## Create and setup minimap
+func _create_minimap() -> void:
+	# Load the minimap script
+	var minimap_script = load("res://scripts/ui/minimap.gd")
+
+	# Create a CanvasLayer to hold the minimap (so it stays on screen)
+	var ui_layer = CanvasLayer.new()
+	ui_layer.name = "MinimapLayer"
+	ui_layer.layer = 100  # High layer to ensure it's on top
+	add_child(ui_layer)
+
+	# Create minimap instance
+	minimap = minimap_script.new()
+	minimap.set_world_size(world_width, world_height)
+	minimap.set_game_world(self)
+	ui_layer.add_child(minimap)
+
+	print("Minimap created")
+
+
+## Get player cameras (for minimap access)
+func get_player_cameras() -> Array:
+	return player_cameras
 
 
 func _process(_delta: float) -> void:
