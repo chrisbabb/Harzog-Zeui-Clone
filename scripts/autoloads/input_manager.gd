@@ -39,7 +39,34 @@ var player_mappings: Dictionary = {}
 
 func _ready() -> void:
 	print("InputManager initialized")
+	_ensure_input_actions_exist()
 	_setup_default_mappings()
+
+
+## Ensure all input actions exist in InputMap (fix missing actions)
+func _ensure_input_actions_exist() -> void:
+	var actions = ["move_up", "move_down", "move_left", "move_right", "attack", "transform", "pickup", "deploy", "build_menu"]
+	var keys = [KEY_W, KEY_S, KEY_A, KEY_D, MOUSE_BUTTON_LEFT, KEY_SPACE, KEY_E, KEY_R, KEY_B]
+
+	for i in range(actions.size()):
+		var action_name = "p1_%s" % actions[i]
+
+		# Create action if it doesn't exist
+		if not InputMap.has_action(action_name):
+			print("Creating missing action: %s" % action_name)
+			InputMap.add_action(action_name)
+
+			# Add the key/button event
+			if i < 4 or i >= 5:  # All except attack (which is mouse)
+				var event = InputEventKey.new()
+				event.physical_keycode = keys[i]
+				InputMap.action_add_event(action_name, event)
+			elif i == 4:  # Attack - mouse button
+				var event = InputEventMouseButton.new()
+				event.button_index = MOUSE_BUTTON_LEFT
+				InputMap.action_add_event(action_name, event)
+
+	print("Input actions verified/created")
 
 
 ## Setup default input mappings for 4 players
