@@ -54,6 +54,9 @@ var time_since_attack: float = 0.0
 # Movement
 var strategic_target_position: Vector2 = Vector2.ZERO
 
+# Player control
+var player_controlled: bool = false  # Set to true when a PlayerController is attached
+
 
 func _ready() -> void:
 	current_health = max_health
@@ -62,6 +65,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if current_state == State.DEAD:
+		return
+
+	# Skip AI behavior if player is controlling this unit
+	if player_controlled:
 		return
 
 	# Update retarget timer

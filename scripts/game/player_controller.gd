@@ -22,6 +22,11 @@ func _ready() -> void:
 	if not hero:
 		push_error("PlayerController must be a child of TransformerHero!")
 		enabled = false
+		return
+
+	# Disable AI control for this unit
+	hero.player_controlled = true
+	print("Player %d controller enabled for %s" % [player_index, hero.unit_name])
 
 
 func _process(_delta: float) -> void:
@@ -49,7 +54,7 @@ func _process(_delta: float) -> void:
 		_try_attack()
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if not enabled or not hero:
 		return
 
@@ -57,20 +62,18 @@ func _physics_process(delta: float) -> void:
 	var movement = InputManager.get_movement_vector(player_index)
 
 	if movement.length() > 0:
-		# Player is controlling movement - override AI
+		# Player is controlling movement
+		# velocity is in units per second, move_and_slide() handles delta internally
 		hero.velocity = movement * hero.move_speed
-		hero.move_and_slide()
-
-		# Wrap position if needed
-		hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
-
-		# Update stance to HOLD_POSITION when player is controlling
-		# (prevents AI from taking over)
-		hero.stance = hero.Stance.HOLD_POSITION
 	else:
-		# No input - allow unit's normal behavior
-		# Could switch back to ADVANCE stance here if desired
-		pass
+		# No input - stop movement
+		hero.velocity = Vector2.ZERO
+
+	# Always call move_and_slide to apply velocity
+	hero.move_and_slide()
+
+	# Wrap position if needed (toroidal world)
+	hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
 
 
 ## Try to pickup packaged units from base

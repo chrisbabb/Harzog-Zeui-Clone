@@ -29,9 +29,11 @@ func _setup_player_options() -> void:
 		for player_type in PLAYER_TYPES:
 			type_option.add_item(player_type)
 
-		# Set default: Player 1 is Human, others are Empty
+		# Set default: Player 1 is Human, Player 2 is AI_Normal, others are Empty
 		if i == 1:
 			type_option.selected = PLAYER_TYPES.find("Human")
+		elif i == 2:
+			type_option.selected = PLAYER_TYPES.find("AI_Normal")
 		else:
 			type_option.selected = PLAYER_TYPES.find("Empty")
 
