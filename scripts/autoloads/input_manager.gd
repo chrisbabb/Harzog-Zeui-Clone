@@ -123,6 +123,10 @@ func get_movement_vector(player_index: int) -> Vector2:
 	var left = is_action_pressed(player_index, "move_left")
 	var right = is_action_pressed(player_index, "move_right")
 
+	# DEBUG: Print when any key is pressed
+	if player_index == 1 and (up or down or left or right):
+		print("P1 Input: up=%s down=%s left=%s right=%s" % [up, down, left, right])
+
 	# Build vector
 	if right:
 		vector.x += 1.0
@@ -132,6 +136,10 @@ func get_movement_vector(player_index: int) -> Vector2:
 		vector.y += 1.0
 	if up:
 		vector.y -= 1.0
+
+	# DEBUG: Print resulting vector
+	if player_index == 1 and vector.length_squared() > 0:
+		print("P1 Vector: %v" % vector)
 
 	# Normalize only if non-zero to avoid errors
 	if vector.length_squared() > 0:
