@@ -25,6 +25,9 @@ var main_base = null  # Reference to player's main base for respawning
 var respawn_delay: float = 3.0  # Seconds before respawn
 var is_respawning: bool = false
 
+# Player aiming (for mouse-controlled shooting)
+var aim_direction: Vector2 = Vector2.RIGHT  # Direction player is aiming
+
 # Form-specific stats
 var humanoid_stats = {
 	"move_speed": 150.0,

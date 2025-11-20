@@ -33,6 +33,9 @@ func _process(_delta: float) -> void:
 	if not enabled or not hero:
 		return
 
+	# Update hero rotation to face mouse cursor
+	_update_rotation_to_mouse()
+
 	# Handle transformation toggle
 	if InputManager.is_action_just_pressed(player_index, "transform"):
 		hero.transform()
@@ -101,28 +104,87 @@ func _try_pickup() -> void:
 	print("Player %d: No friendly base nearby to pickup from" % player_index)
 
 
+## Update hero rotation to face mouse cursor
+func _update_rotation_to_mouse() -> void:
+	# Get mouse position in world coordinates
+	var mouse_pos = hero.get_global_mouse_position()
+
+	# Calculate direction to mouse using toroidal distance
+	var direction = ToroidalWorld.toroidal_direction(hero.global_position, mouse_pos)
+
+	# Calculate angle and rotate hero
+	var angle = direction.angle()
+	hero.rotation = angle
+
+	# Store the aim direction for shooting
+	hero.aim_direction = direction.normalized()
+
+
 ## Handle player attack (called continuously while attack button held)
 func _handle_player_attack(delta: float) -> void:
-	# Update retarget timer
-	hero.time_since_retarget += delta
-	if hero.time_since_retarget >= hero.RETARGET_INTERVAL:
-		hero.time_since_retarget = 0.0
-		# Find and acquire new target
-		var best_target = hero._find_best_target_in_range()
-		if best_target:
-			hero.current_target = best_target
-			hero.current_state = hero.State.ENGAGING_TARGET
+	# Check attack cooldown
+	hero.time_since_attack += delta
+	if hero.time_since_attack < hero.attack_cooldown:
+		return  # Still on cooldown
 
-	# If we have a target, attack it
-	if hero.current_target and hero._is_valid_target(hero.current_target):
-		var target_pos = hero._get_target_position(hero.current_target)
-		var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, target_pos)
+	# Shoot in the direction of the mouse
+	hero.time_since_attack = 0.0
+	_shoot_in_direction()
 
-		# If target is in attack range, attack
-		if dist_sq <= hero.attack_range * hero.attack_range:
-			hero._attack_target(delta)
-	else:
-		hero.current_target = null
+
+## Shoot in the direction the player is aiming (mouse direction)
+func _shoot_in_direction() -> void:
+	# Find all potential targets
+	var all_units = get_tree().get_nodes_in_group("units")
+	var all_buildings = get_tree().get_nodes_in_group("buildings")
+	var all_entities = all_units + all_buildings
+
+	var best_target = null
+	var best_score = -1.0
+
+	# Check each entity to see if it's in our aim cone
+	for entity in all_entities:
+		if entity == hero:
+			continue
+
+		if not hero._is_enemy(entity):
+			continue
+
+		if entity.has_method("is_dead") and entity.is_dead():
+			continue
+
+		# Check if entity can be targeted based on form
+		if "is_flying" in entity:
+			if hero.current_form == hero.Form.HUMANOID and entity.is_flying:
+				continue  # Humanoid can't target air units
+
+		# Get direction to entity
+		var entity_pos = entity.global_position if "global_position" in entity else entity.position
+		var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, entity_pos)
+
+		# Check if in range
+		if dist_sq > hero.attack_range * hero.attack_range:
+			continue
+
+		# Calculate direction to entity
+		var dir_to_entity = ToroidalWorld.toroidal_direction(hero.global_position, entity_pos).normalized()
+
+		# Calculate dot product (how aligned with aim direction)
+		var alignment = hero.aim_direction.dot(dir_to_entity)
+
+		# Only consider entities in front of us (alignment > 0.5 means within ~60 degree cone)
+		if alignment > 0.5:
+			# Score based on alignment and distance (prefer closer, more aligned targets)
+			var score = alignment * 2.0 - (sqrt(dist_sq) / hero.attack_range)
+			if score > best_score:
+				best_score = score
+				best_target = entity
+
+	# Attack the best target if found
+	if best_target:
+		if best_target.has_method("take_damage"):
+			best_target.take_damage(hero.attack_damage)
+			print("Player %d hit target for %.0f damage!" % [player_index, hero.attack_damage])
 
 
 ## Open build menu
