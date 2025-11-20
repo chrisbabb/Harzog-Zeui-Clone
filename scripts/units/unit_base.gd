@@ -25,12 +25,14 @@ enum Stance {
 
 # Unit properties
 @export var unit_name: String = "Unit"
+@export var unit_type: String = "generic"
 @export var max_health: float = 100.0
 @export var move_speed: float = 100.0
 @export var attack_range: float = 150.0
 @export var attack_damage: float = 10.0
 @export var attack_cooldown: float = 1.0
 @export var detection_range: float = 300.0
+@export var is_flying: bool = false  # True for air units (plane mode, etc.)
 
 # Ownership
 var owner_slot: int = -1  # Which player owns this unit (1-4)

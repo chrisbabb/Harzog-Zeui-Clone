@@ -1,47 +1,59 @@
-extends UnitBase
-class_name GroundSoldier
-## GroundSoldier - Basic ground attacking unit
+extends TurretBase
+class_name DeathTurret
+## DeathTurret - Immobile ultra-powerful turret
 ##
-## Can attack: Ground units and bases
-## Cannot attack: Air units
+## Can attack: BOTH air and ground units, AND main bases
+## Cannot move: Immobile defensive structure
+## Special: Can hit everything, prioritizes high-value targets and clusters
 
 # Target priority scores (higher = more preferred)
-const PRIORITY_ENEMY_HERO_GROUND = 100
+const PRIORITY_ENEMY_HERO = 100
+const PRIORITY_ENEMY_DEATH_TURRET = 95
 const PRIORITY_ENEMY_TANK = 90
-const PRIORITY_ENEMY_DEATH_TURRET = 85
+const PRIORITY_ENEMY_TURRET = 85
 const PRIORITY_ENEMY_SOLDIER = 80
-const PRIORITY_ENEMY_TURRET = 75
-const PRIORITY_ENEMY_PEON = 70
-const PRIORITY_ENEMY_BASE = 50
+const PRIORITY_ENEMY_BASE = 75
+const PRIORITY_ENEMY_PEON = 60
 
 
 func _ready() -> void:
 	super._ready()
-	unit_name = "Ground Soldier"
-	unit_type = "ground_soldier"
-	max_health = 100.0
+	unit_name = "Death Turret"
+	unit_type = "death_turret"
+	max_health = 500.0
 	current_health = max_health
-	move_speed = 120.0
-	attack_range = 100.0
-	attack_damage = 15.0
-	attack_cooldown = 1.0
-	detection_range = 300.0
+	attack_range = 280.0
+	attack_damage = 50.0
+	attack_cooldown = 2.0
+	detection_range = 400.0
 
 
 ## Find best target in range
-## Targets ground units and bases only
+## Targets BOTH ground and air units, AND bases
 func _find_best_target_in_range():
 	var potential_targets = []
 
-	# Get all enemy units
+	# Get ALL enemy units (ground and air)
 	var all_units = get_tree().get_nodes_in_group("units")
 	for unit in all_units:
-		if _is_enemy(unit) and _can_target_unit(unit):
+		if _is_enemy(unit):
 			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, unit.global_position)
 			if dist_sq <= detection_range * detection_range:
 				potential_targets.append({
 					"entity": unit,
 					"priority": _get_unit_priority(unit),
+					"distance_sq": dist_sq
+				})
+
+	# Get all enemy turrets
+	var all_turrets = get_tree().get_nodes_in_group("turrets")
+	for turret in all_turrets:
+		if _is_enemy(turret) and turret != self:
+			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, turret.global_position)
+			if dist_sq <= detection_range * detection_range:
+				potential_targets.append({
+					"entity": turret,
+					"priority": _get_turret_priority(turret),
 					"distance_sq": dist_sq
 				})
 
@@ -71,33 +83,32 @@ func _find_best_target_in_range():
 	return potential_targets[0].entity
 
 
-## Check if this unit can target another unit
-func _can_target_unit(unit) -> bool:
-	# Ground soldiers cannot attack air units
-	if unit.has("is_flying") and unit.is_flying:
-		return false
-
-	return true
-
-
 ## Get priority score for a unit
 func _get_unit_priority(unit) -> int:
 	if unit.has("unit_type"):
 		match unit.unit_type:
 			"transformer_hero":
-				return PRIORITY_ENEMY_HERO_GROUND
+				return PRIORITY_ENEMY_HERO
 			"tank", "missile_tank":
 				return PRIORITY_ENEMY_TANK
-			"death_turret":
-				return PRIORITY_ENEMY_DEATH_TURRET
 			"ground_soldier", "missile_soldier":
 				return PRIORITY_ENEMY_SOLDIER
-			"gun_turret", "missile_turret":
-				return PRIORITY_ENEMY_TURRET
 			"peon":
 				return PRIORITY_ENEMY_PEON
 
 	return PRIORITY_ENEMY_SOLDIER  # Default
+
+
+## Get priority score for a turret
+func _get_turret_priority(turret) -> int:
+	if turret.has("unit_type"):
+		match turret.unit_type:
+			"death_turret":
+				return PRIORITY_ENEMY_DEATH_TURRET
+			"gun_turret", "missile_turret":
+				return PRIORITY_ENEMY_TURRET
+
+	return PRIORITY_ENEMY_TURRET  # Default
 
 
 ## Check if entity is an enemy
@@ -106,19 +117,3 @@ func _is_enemy(entity) -> bool:
 		return false
 
 	return entity.team_color != team_color
-
-
-## Choose strategic target position
-func _choose_strategic_target() -> Vector2:
-	# Move toward nearest enemy main base
-	var enemy_bases = []
-	for base in get_tree().get_nodes_in_group("main_bases"):
-		if _is_enemy(base):
-			enemy_bases.append(base)
-
-	if not enemy_bases.is_empty():
-		var nearest_base = ToroidalWorld.find_nearest(global_position, enemy_bases)
-		if nearest_base:
-			return nearest_base.global_position
-
-	return global_position

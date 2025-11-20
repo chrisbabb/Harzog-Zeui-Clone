@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3 uid="uid://dmsoldier001"]
+
+[ext_resource type="Script" path="res://scripts/units/missile_soldier.gd" id="1"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_msoldier"]
+size = Vector2(24, 24)
+
+[node name="MissileSoldier" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 1
+script = ExtResource("1")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_msoldier")
+
+[node name="Visual" type="ColorRect" parent="."]
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 12.0
+offset_bottom = 12.0
+color = Color(0.5, 0.5, 0.8, 1)
+
+[node name="Label" type="Label" parent="."]
+offset_left = -15.0
+offset_top = -28.0
+offset_right = 15.0
+offset_bottom = -13.0
+text = "MS"
+horizontal_alignment = 1
+vertical_alignment = 1

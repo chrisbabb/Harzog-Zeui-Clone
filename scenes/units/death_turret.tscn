@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3 uid="uid://ddturret001"]
+
+[ext_resource type="Script" path="res://scripts/units/death_turret.gd" id="1"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dturret"]
+size = Vector2(50, 50)
+
+[node name="DeathTurret" type="StaticBody2D"]
+collision_layer = 4
+collision_mask = 4
+script = ExtResource("1")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_dturret")
+
+[node name="Visual" type="ColorRect" parent="."]
+offset_left = -25.0
+offset_top = -25.0
+offset_right = 25.0
+offset_bottom = 25.0
+color = Color(0.8, 0.1, 0.1, 1)
+
+[node name="Label" type="Label" parent="."]
+offset_left = -30.0
+offset_top = -41.0
+offset_right = 30.0
+offset_bottom = -26.0
+text = "DEATH"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -1,31 +1,32 @@
 extends UnitBase
-class_name GroundSoldier
-## GroundSoldier - Basic ground attacking unit
+class_name Tank
+## Tank - Heavy ground attacking unit
 ##
 ## Can attack: Ground units and bases
 ## Cannot attack: Air units
+## Tougher and more dangerous than basic ground soldier
 
 # Target priority scores (higher = more preferred)
 const PRIORITY_ENEMY_HERO_GROUND = 100
-const PRIORITY_ENEMY_TANK = 90
-const PRIORITY_ENEMY_DEATH_TURRET = 85
+const PRIORITY_ENEMY_TANK = 95
+const PRIORITY_ENEMY_DEATH_TURRET = 90
+const PRIORITY_ENEMY_TURRET = 85
 const PRIORITY_ENEMY_SOLDIER = 80
-const PRIORITY_ENEMY_TURRET = 75
 const PRIORITY_ENEMY_PEON = 70
 const PRIORITY_ENEMY_BASE = 50
 
 
 func _ready() -> void:
 	super._ready()
-	unit_name = "Ground Soldier"
-	unit_type = "ground_soldier"
-	max_health = 100.0
+	unit_name = "Tank"
+	unit_type = "tank"
+	max_health = 250.0
 	current_health = max_health
-	move_speed = 120.0
-	attack_range = 100.0
-	attack_damage = 15.0
-	attack_cooldown = 1.0
-	detection_range = 300.0
+	move_speed = 80.0
+	attack_range = 150.0
+	attack_damage = 35.0
+	attack_cooldown = 2.0
+	detection_range = 350.0
 
 
 ## Find best target in range
@@ -73,7 +74,7 @@ func _find_best_target_in_range():
 
 ## Check if this unit can target another unit
 func _can_target_unit(unit) -> bool:
-	# Ground soldiers cannot attack air units
+	# Tanks cannot attack air units
 	if unit.has("is_flying") and unit.is_flying:
 		return false
 
@@ -90,10 +91,10 @@ func _get_unit_priority(unit) -> int:
 				return PRIORITY_ENEMY_TANK
 			"death_turret":
 				return PRIORITY_ENEMY_DEATH_TURRET
-			"ground_soldier", "missile_soldier":
-				return PRIORITY_ENEMY_SOLDIER
 			"gun_turret", "missile_turret":
 				return PRIORITY_ENEMY_TURRET
+			"ground_soldier", "missile_soldier":
+				return PRIORITY_ENEMY_SOLDIER
 			"peon":
 				return PRIORITY_ENEMY_PEON
 
