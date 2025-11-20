@@ -29,7 +29,8 @@ func _ready() -> void:
 
 	# Disable AI control for this unit
 	hero.player_controlled = true
-	print("Player %d controller enabled for %s" % [player_index, hero.unit_name])
+	print("=== Player %d controller enabled for %s ===" % [player_index, hero.unit_name])
+	print("PlayerController is ACTIVE and ready")
 
 
 func _process(_delta: float) -> void:
@@ -56,6 +57,11 @@ func _process(_delta: float) -> void:
 		_open_build_menu()
 
 	# Handle continuous attack - hold button to keep attacking
+	# Check raw mouse/trackpad input directly
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		print("DIRECT: Left mouse/trackpad button IS pressed!")
+		_handle_player_attack(_delta)
+
 	var attack_pressed = InputManager.is_action_pressed(player_index, "attack")
 	if attack_pressed:
 		_handle_player_attack(_delta)
