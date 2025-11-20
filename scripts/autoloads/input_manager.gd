@@ -117,16 +117,26 @@ func is_action_just_pressed(player_index: int, action: String) -> bool:
 func get_movement_vector(player_index: int) -> Vector2:
 	var vector = Vector2.ZERO
 
-	if is_action_pressed(player_index, "move_right"):
+	# Check each direction
+	var up = is_action_pressed(player_index, "move_up")
+	var down = is_action_pressed(player_index, "move_down")
+	var left = is_action_pressed(player_index, "move_left")
+	var right = is_action_pressed(player_index, "move_right")
+
+	# Build vector
+	if right:
 		vector.x += 1.0
-	if is_action_pressed(player_index, "move_left"):
+	if left:
 		vector.x -= 1.0
-	if is_action_pressed(player_index, "move_down"):
+	if down:
 		vector.y += 1.0
-	if is_action_pressed(player_index, "move_up"):
+	if up:
 		vector.y -= 1.0
 
-	return vector.normalized()
+	# Normalize only if non-zero to avoid errors
+	if vector.length_squared() > 0:
+		return vector.normalized()
+	return vector
 
 
 ## Get aim direction for a player (used for aiming attacks)
