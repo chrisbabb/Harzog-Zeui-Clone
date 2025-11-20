@@ -56,7 +56,8 @@ func _process(_delta: float) -> void:
 		_open_build_menu()
 
 	# Handle continuous attack - hold button to keep attacking
-	if InputManager.is_action_pressed(player_index, "attack"):
+	var attack_pressed = InputManager.is_action_pressed(player_index, "attack")
+	if attack_pressed:
 		_handle_player_attack(_delta)
 	else:
 		# Clear target when not attacking
@@ -132,6 +133,7 @@ func _handle_player_attack(delta: float) -> void:
 
 	# Shoot in the direction of the mouse
 	hero.time_since_attack = 0.0
+	print("Player %d firing bullet!" % player_index)
 	_shoot_in_direction()
 
 
@@ -139,6 +141,7 @@ func _handle_player_attack(delta: float) -> void:
 func _shoot_in_direction() -> void:
 	# Create bullet
 	var bullet = BulletScene.instantiate()
+	print("Bullet created: ", bullet)
 
 	# Initialize bullet
 	bullet.initialize(
@@ -149,6 +152,7 @@ func _shoot_in_direction() -> void:
 		hero.team_color,
 		hero
 	)
+	print("Bullet initialized at pos: ", hero.global_position, " dir: ", hero.aim_direction)
 
 	# Add bullet to game world (find the game world node)
 	var game_world = get_tree().root.get_node_or_null("GameWorld")
@@ -157,8 +161,12 @@ func _shoot_in_direction() -> void:
 		var projectiles_node = game_world.get_node_or_null("Projectiles")
 		if projectiles_node:
 			projectiles_node.add_child(bullet)
+			print("Bullet added to Projectiles node")
 		else:
 			game_world.add_child(bullet)
+			print("Bullet added to GameWorld")
+	else:
+		print("ERROR: Could not find GameWorld node!")
 
 
 ## Open build menu
