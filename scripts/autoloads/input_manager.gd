@@ -85,7 +85,16 @@ func is_action_pressed(player_index: int, action: String) -> bool:
 
 	# Keyboard + Mouse
 	if device == InputDevice.KEYBOARD_MOUSE:
-		return Input.is_action_pressed("p%d_%s" % [player_index, action])
+		var action_name = "p%d_%s" % [player_index, action]
+		var is_pressed = Input.is_action_pressed(action_name)
+
+		# DEBUG: Check if W key is physically pressed
+		if action == "move_up" and player_index == 1:
+			var w_pressed = Input.is_physical_key_pressed(KEY_W)
+			var action_exists = InputMap.has_action(action_name)
+			print("DEBUG move_up: action_exists=%s, is_action_pressed=%s, W_key_pressed=%s" % [action_exists, is_pressed, w_pressed])
+
+		return is_pressed
 
 	# Controller
 	else:
