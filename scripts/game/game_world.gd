@@ -40,6 +40,9 @@ func _ready() -> void:
 	# Initialize AI players
 	_initialize_ai_players()
 
+	# Spawn test enemies for each player
+	_spawn_test_enemies()
+
 
 ## Setup split-screen viewports based on number of players
 func _setup_split_screen() -> void:
@@ -147,6 +150,61 @@ func _get_color_from_string(color_string: String) -> Color:
 			return Color.ORANGE
 		_:
 			return Color.WHITE
+
+
+## Spawn test enemies for combat testing
+func _spawn_test_enemies() -> void:
+	# Spawn enemies near each AI player's base
+	for i in range(GameManager.active_players.size()):
+		var player = GameManager.active_players[i]
+
+		# Only spawn enemies for AI players
+		if not player.type.begins_with("AI_"):
+			continue
+
+		var base_pos = BASE_SPAWN_POSITIONS[i]
+		var enemy_color = player.color
+		var owner_slot = player.slot_index
+
+		# Spawn 3 ground soldiers in a line
+		for j in range(3):
+			var soldier = _spawn_unit("ground_soldier", base_pos + Vector2(-200, -100 + j * 80), owner_slot, enemy_color)
+			$Units.add_child(soldier)
+
+		# Spawn 2 tanks
+		var tank1 = _spawn_unit("tank", base_pos + Vector2(-150, -150), owner_slot, enemy_color)
+		$Units.add_child(tank1)
+		var tank2 = _spawn_unit("tank", base_pos + Vector2(-150, 150), owner_slot, enemy_color)
+		$Units.add_child(tank2)
+
+		# Spawn 2 missile soldiers (for anti-air)
+		var missile_soldier1 = _spawn_unit("missile_soldier", base_pos + Vector2(-250, 0), owner_slot, enemy_color)
+		$Units.add_child(missile_soldier1)
+		var missile_soldier2 = _spawn_unit("missile_soldier", base_pos + Vector2(-250, 100), owner_slot, enemy_color)
+		$Units.add_child(missile_soldier2)
+
+		# Spawn 1 gun turret near base
+		var turret = _spawn_unit("gun_turret", base_pos + Vector2(-100, 0), owner_slot, enemy_color)
+		$Buildings.add_child(turret)
+
+		print("Spawned test enemies for Player %d (%s)" % [player.slot_index, player.color])
+
+
+## Spawn a unit of specified type
+func _spawn_unit(unit_type: String, position: Vector2, owner_slot: int, team_color: String) -> Node:
+	var scene_path = "res://scenes/units/%s.tscn" % unit_type
+	var unit_scene = load(scene_path)
+	var unit = unit_scene.instantiate()
+
+	unit.position = position
+	unit.set_owner_info(owner_slot, team_color)
+
+	# Color the unit based on team
+	if unit.has_node("Visual"):
+		var visual = unit.get_node("Visual")
+		visual.color = _get_color_from_string(team_color)
+
+	return unit
 
 
 func _process(_delta: float) -> void:

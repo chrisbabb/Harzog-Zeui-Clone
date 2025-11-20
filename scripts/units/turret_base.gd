@@ -32,11 +32,15 @@ const RETARGET_INTERVAL: float = 0.1  # 100ms
 var current_health: float
 var time_since_attack: float = 0.0
 
+# Health bar
+var health_bar: ProgressBar = null
+
 
 func _ready() -> void:
 	current_health = max_health
 	add_to_group("turrets")
 	add_to_group("buildings")
+	_create_health_bar()
 
 
 func _process(delta: float) -> void:
@@ -119,6 +123,7 @@ func _perform_attack() -> void:
 ## Take damage
 func take_damage(amount: float) -> void:
 	current_health -= amount
+	_update_health_bar()
 	if current_health <= 0:
 		_die()
 
@@ -132,6 +137,47 @@ func is_dead() -> bool:
 func _die() -> void:
 	# TODO: Play death animation, effects
 	queue_free()
+
+
+## Create health bar above turret
+func _create_health_bar() -> void:
+	health_bar = ProgressBar.new()
+	health_bar.size = Vector2(50, 8)
+	health_bar.position = Vector2(-25, -40)
+	health_bar.min_value = 0
+	health_bar.max_value = max_health
+	health_bar.value = current_health
+	health_bar.show_percentage = false
+
+	# Style the health bar
+	var style_bg = StyleBoxFlat.new()
+	style_bg.bg_color = Color(0.2, 0.2, 0.2, 0.8)
+	health_bar.add_theme_stylebox_override("background", style_bg)
+
+	var style_fg = StyleBoxFlat.new()
+	style_fg.bg_color = Color(0.2, 0.8, 0.2, 1.0)  # Green
+	health_bar.add_theme_stylebox_override("fill", style_fg)
+
+	add_child(health_bar)
+
+
+## Update health bar to reflect current health
+func _update_health_bar() -> void:
+	if health_bar:
+		health_bar.value = current_health
+
+		# Change color based on health percentage
+		var health_percent = current_health / max_health
+		var style_fg = StyleBoxFlat.new()
+
+		if health_percent > 0.6:
+			style_fg.bg_color = Color(0.2, 0.8, 0.2, 1.0)  # Green
+		elif health_percent > 0.3:
+			style_fg.bg_color = Color(0.9, 0.9, 0.2, 1.0)  # Yellow
+		else:
+			style_fg.bg_color = Color(0.9, 0.2, 0.2, 1.0)  # Red
+
+		health_bar.add_theme_stylebox_override("fill", style_fg)
 
 
 ## Set turret ownership

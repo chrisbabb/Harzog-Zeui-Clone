@@ -113,15 +113,7 @@ func is_action_pressed(player_index: int, action: String) -> bool:
 	# Keyboard + Mouse
 	if device == InputDevice.KEYBOARD_MOUSE:
 		var action_name = "p%d_%s" % [player_index, action]
-		var is_pressed = Input.is_action_pressed(action_name)
-
-		# DEBUG: Check if W key is physically pressed
-		if action == "move_up" and player_index == 1:
-			var w_pressed = Input.is_physical_key_pressed(KEY_W)
-			var action_exists = InputMap.has_action(action_name)
-			print("DEBUG move_up: action_exists=%s, is_action_pressed=%s, W_key_pressed=%s" % [action_exists, is_pressed, w_pressed])
-
-		return is_pressed
+		return Input.is_action_pressed(action_name)
 
 	# Controller
 	else:
@@ -154,28 +146,14 @@ func get_movement_vector(player_index: int) -> Vector2:
 	var vector = Vector2.ZERO
 
 	# Check each direction
-	var up = is_action_pressed(player_index, "move_up")
-	var down = is_action_pressed(player_index, "move_down")
-	var left = is_action_pressed(player_index, "move_left")
-	var right = is_action_pressed(player_index, "move_right")
-
-	# DEBUG: Print when any key is pressed
-	if player_index == 1 and (up or down or left or right):
-		print("P1 Input: up=%s down=%s left=%s right=%s" % [up, down, left, right])
-
-	# Build vector
-	if right:
+	if is_action_pressed(player_index, "move_right"):
 		vector.x += 1.0
-	if left:
+	if is_action_pressed(player_index, "move_left"):
 		vector.x -= 1.0
-	if down:
+	if is_action_pressed(player_index, "move_down"):
 		vector.y += 1.0
-	if up:
+	if is_action_pressed(player_index, "move_up"):
 		vector.y -= 1.0
-
-	# DEBUG: Print resulting vector
-	if player_index == 1 and vector.length_squared() > 0:
-		print("P1 Vector: %v" % vector)
 
 	# Normalize only if non-zero to avoid errors
 	if vector.length_squared() > 0:
