@@ -48,6 +48,11 @@ const UNIT_DATA = {
 		"cost": 10,
 		"build_time": 5.0,
 		"scene": "res://scenes/units/peon.tscn"
+	},
+	"soldier": {
+		"cost": 10,
+		"build_time": 7.0,
+		"scene": "res://scenes/units/soldier.tscn"
 	}
 }
 
