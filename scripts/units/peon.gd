@@ -23,6 +23,7 @@ func _ready() -> void:
 	attack_damage = 0.0
 	attack_cooldown = 0.0
 	detection_range = 200.0
+	z_index = 0  # Ground units render below air units
 
 
 ## Peons NEVER attack anything

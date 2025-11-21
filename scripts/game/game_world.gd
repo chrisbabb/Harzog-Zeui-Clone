@@ -99,14 +99,26 @@ func _spawn_players_and_bases() -> void:
 
 ## Create a main base for a player
 func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
-	# TODO: Load actual base scene
-	var base = Node2D.new()
+	# Create as StaticBody2D so it can block units
+	var base = StaticBody2D.new()
 	base.position = position
 	base.z_index = 0  # Ensure bases render below air units
+
+	# Set collision layers - bases are on ground layer
+	base.collision_layer = 1  # Ground layer (blocks ground units)
+	base.collision_mask = 0   # Bases don't need to detect anything
+
 	base.set_meta("owner_slot", player.slot_index)
 	base.set_meta("team_color", player.color)
 	base.add_to_group("main_bases")
 	base.add_to_group("buildings")
+
+	# Add collision shape
+	var collision = CollisionShape2D.new()
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(100, 100)
+	collision.shape = shape
+	base.add_child(collision)
 
 	# Add visual representation (placeholder)
 	var sprite = ColorRect.new()

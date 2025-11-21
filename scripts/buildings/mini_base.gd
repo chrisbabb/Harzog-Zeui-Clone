@@ -38,6 +38,11 @@ func _ready() -> void:
 	add_to_group("mini_bases")
 	add_to_group("buildings")
 	z_index = 0  # Ensure bases render below air units
+
+	# Set collision layers - bases are on ground layer
+	collision_layer = 1  # Ground layer (blocks ground units)
+	collision_mask = 0   # Bases don't need to detect anything
+
 	_create_visual()
 	_create_capture_zone()
 

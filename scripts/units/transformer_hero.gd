@@ -68,6 +68,17 @@ func _ready() -> void:
 	max_health = 400.0
 	current_health = max_health
 	detection_range = 350.0
+
+	# Set initial collision layers and z_index based on starting form
+	if current_form == Form.PLANE:
+		collision_layer = 2
+		collision_mask = 2
+		z_index = 10
+	else:
+		collision_layer = 1
+		collision_mask = 1
+		z_index = 0
+
 	_apply_form_stats()
 	_update_visual()  # Set initial visual based on starting form
 	add_to_group("heroes")

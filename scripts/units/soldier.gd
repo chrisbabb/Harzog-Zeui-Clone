@@ -20,6 +20,7 @@ func _ready() -> void:
 	attack_cooldown = 1.2
 	detection_range = 350.0  # About 1/4 of viewable map (aggressive detection)
 	is_flying = false
+	z_index = 0  # Ground units render below air units
 
 	# Soldiers are aggressive - they advance and attack enemies
 	stance = Stance.ADVANCE
