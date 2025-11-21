@@ -74,8 +74,9 @@ func _process(_delta: float) -> void:
 	# Update button states based on resources
 	_update_button_states()
 
-	# Toggle menu with B key
-	if Input.is_action_just_pressed("build_menu"):
+	# Toggle menu with B key (player-specific action)
+	var action_name = "p%d_build_menu" % player_slot
+	if Input.is_action_just_pressed(action_name):
 		toggle_menu()
 
 

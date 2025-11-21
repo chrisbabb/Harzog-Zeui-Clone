@@ -46,10 +46,6 @@ func _process(_delta: float) -> void:
 	if InputManager.is_action_just_pressed(player_index, "pickup"):
 		_try_pickup_or_deploy()
 
-	# Handle build menu
-	if InputManager.is_action_just_pressed(player_index, "build_menu"):
-		_open_build_menu()
-
 	# Handle continuous attack - hold button to keep attacking
 	# Check raw mouse/trackpad input directly
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -160,9 +156,3 @@ func _shoot_in_direction() -> void:
 			print("Bullet added to GameWorld")
 	else:
 		print("ERROR: Could not find GameWorld node!")
-
-
-## Open build menu
-func _open_build_menu() -> void:
-	# TODO: Implement build menu UI
-	print("Player %d: Build menu (not implemented yet)" % player_index)
