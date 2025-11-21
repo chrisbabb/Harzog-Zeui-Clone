@@ -22,11 +22,13 @@ var scale_y: float = 1.0
 
 # References
 var game_world: Node = null
+var player_team_color: String = ""  # Player 1's team color for fog of war
 
 # Colors
 const BACKGROUND_COLOR = Color(0.1, 0.1, 0.1, 0.8)
 const BORDER_COLOR = Color(0.4, 0.4, 0.4, 1.0)
 const VIEW_RECT_COLOR = Color(1.0, 1.0, 1.0, 0.3)
+const NEUTRAL_COLOR = Color(0.7, 0.7, 0.7, 1.0)
 
 
 func _ready() -> void:
@@ -45,6 +47,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Update player team color (for fog of war)
+	_update_player_team_color()
 	queue_redraw()
 
 
@@ -78,6 +82,10 @@ func _draw_units() -> void:
 		if unit.has_method("is_dead") and unit.is_dead():
 			continue
 
+		# Only show friendly units (fog of war)
+		if not _is_friendly(unit):
+			continue
+
 		var world_pos = unit.global_position
 		var minimap_pos = _world_to_minimap(world_pos)
 		var color = _get_unit_color(unit)
@@ -96,9 +104,10 @@ func _draw_buildings() -> void:
 		if building.has_method("is_dead") and building.is_dead():
 			continue
 
+		# Show all buildings, but use different colors for friendly/neutral/enemy
 		var world_pos = building.global_position
 		var minimap_pos = _world_to_minimap(world_pos)
-		var color = _get_unit_color(building)
+		var color = _get_building_color(building)
 
 		# Draw building as a small square
 		var rect_size = 4.0
@@ -185,3 +194,46 @@ func set_world_size(width: float, height: float) -> void:
 ## Set reference to game world
 func set_game_world(world: Node) -> void:
 	game_world = world
+
+
+## Update player team color for fog of war
+func _update_player_team_color() -> void:
+	if player_team_color != "":
+		return  # Already set
+
+	# Find player 1's hero to get team color
+	if not game_world:
+		return
+
+	var units_node = game_world.get_node_or_null("Units")
+	if not units_node:
+		return
+
+	for unit in units_node.get_children():
+		if "owner_slot" in unit and unit.owner_slot == 1:
+			if "team_color" in unit:
+				player_team_color = unit.team_color
+				print("Minimap: Player team color is %s" % player_team_color)
+				return
+
+
+## Check if an entity is friendly (same team as player)
+func _is_friendly(entity) -> bool:
+	if not "team_color" in entity:
+		return false
+
+	return entity.team_color == player_team_color
+
+
+## Get color for a building based on team and friendly status
+func _get_building_color(building) -> Color:
+	# Check if it's a mini base (neutral)
+	if "is_neutral" in building and building.is_neutral:
+		return NEUTRAL_COLOR
+
+	# Check if friendly
+	if _is_friendly(building):
+		return _get_unit_color(building)
+	else:
+		# Enemy buildings shown in dark red
+		return Color(0.6, 0.1, 0.1, 1.0)

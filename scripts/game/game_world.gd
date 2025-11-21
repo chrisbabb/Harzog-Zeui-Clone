@@ -46,6 +46,9 @@ func _ready() -> void:
 	# Spawn test enemies for each player
 	_spawn_test_enemies()
 
+	# Spawn mini bases across the map
+	_spawn_mini_bases()
+
 	# Create minimap UI
 	_create_minimap()
 
@@ -213,6 +216,33 @@ func _spawn_unit(unit_type: String, position: Vector2, owner_slot: int, team_col
 		visual.color = _get_color_from_string(team_color)
 
 	return unit
+
+
+## Spawn mini bases across the map
+func _spawn_mini_bases() -> void:
+	# Spawn mini bases in strategic locations across the map
+	# Avoid spawning too close to player main bases
+	var mini_base_scene = preload("res://scenes/buildings/mini_base.tscn")
+
+	# Define mini base spawn positions (spread across the map)
+	var mini_base_positions = [
+		Vector2(2000, 750),   # Center-top
+		Vector2(2000, 2250),  # Center-bottom
+		Vector2(1000, 1500),  # Left-center
+		Vector2(3000, 1500),  # Right-center
+		Vector2(1000, 750),   # Top-left
+		Vector2(3000, 750),   # Top-right
+		Vector2(1000, 2250),  # Bottom-left
+		Vector2(3000, 2250),  # Bottom-right
+		Vector2(2000, 1500),  # Dead center
+	]
+
+	for pos in mini_base_positions:
+		var mini_base = mini_base_scene.instantiate()
+		mini_base.position = pos
+		$Buildings.add_child(mini_base)
+
+	print("Spawned %d mini bases" % mini_base_positions.size())
 
 
 ## Create and setup minimap
