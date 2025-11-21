@@ -29,15 +29,7 @@ const BASE_SPAWN_POSITIONS = [
 
 
 func _ready() -> void:
-	print("============================================================")
-	print("=== GAMEWORLD STARTING ===")
-	print("============================================================")
 	print("GameWorld initialized")
-
-	# Debug: Show active players
-	print("Active players: ", GameManager.active_players.size())
-	for player in GameManager.active_players:
-		print("  Player %d: type=%s, color=%s" % [player.slot_index, player.type, player.color])
 
 	# Set toroidal world size
 	ToroidalWorld.set_world_size(world_width, world_height)
@@ -46,7 +38,6 @@ func _ready() -> void:
 	_setup_split_screen()
 
 	# Spawn players and their bases
-	print("Spawning players and bases...")
 	_spawn_players_and_bases()
 
 	# Initialize AI players
@@ -57,9 +48,6 @@ func _ready() -> void:
 
 	# Create minimap UI
 	_create_minimap()
-
-	print("=== GAMEWORLD READY ===")
-	print("============================================================")
 
 
 ## Setup split-screen viewports based on number of players
@@ -136,16 +124,11 @@ func _create_transformer_hero(player: Dictionary, position: Vector2) -> Transfor
 		visual.color = _get_color_from_string(player.color)
 
 	# If this is a human player, attach a PlayerController
-	print("Checking player type for Player %d: '%s'" % [player.slot_index, player.type])
 	if player.type == "Human":
-		print("Creating PlayerController for Player %d..." % player.slot_index)
 		var controller = preload("res://scripts/game/player_controller.gd").new()
 		controller.player_index = player.slot_index
 		controller.name = "PlayerController"
 		hero.add_child(controller)
-		print("Added PlayerController for Player %d (Human)" % player.slot_index)
-	else:
-		print("Player %d is NOT Human (type='%s'), skipping PlayerController" % [player.slot_index, player.type])
 
 	return hero
 

@@ -29,9 +29,7 @@ func _ready() -> void:
 
 	# Disable AI control for this unit
 	hero.player_controlled = true
-	print("=== Player %d controller enabled for %s ===" % [player_index, hero.unit_name])
-	print("PlayerController is ACTIVE and ready")
-	print("VERSION: 2025-11-20-FIX")
+	print("Player %d controller enabled for %s" % [player_index, hero.unit_name])
 
 
 func _process(_delta: float) -> void:
@@ -60,7 +58,6 @@ func _process(_delta: float) -> void:
 	# Handle continuous attack - hold button to keep attacking
 	# Check raw mouse/trackpad input directly
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		print("DIRECT: Left mouse/trackpad button IS pressed!")
 		_handle_player_attack(_delta)
 
 	var attack_pressed = InputManager.is_action_pressed(player_index, "attack")
@@ -140,7 +137,6 @@ func _handle_player_attack(delta: float) -> void:
 
 	# Shoot in the direction of the mouse
 	hero.time_since_attack = 0.0
-	print("Player %d firing bullet!" % player_index)
 	_shoot_in_direction()
 
 
@@ -148,18 +144,19 @@ func _handle_player_attack(delta: float) -> void:
 func _shoot_in_direction() -> void:
 	# Create bullet
 	var bullet = BulletScene.instantiate()
-	print("Bullet created: ", bullet)
+
+	# Bullets travel to edge of screen (2000 units should cover most viewport sizes)
+	var bullet_range = 2000.0
 
 	# Initialize bullet
 	bullet.initialize(
 		hero.global_position,
 		hero.aim_direction,
 		hero.attack_damage,
-		hero.attack_range,
+		bullet_range,
 		hero.team_color,
 		hero
 	)
-	print("Bullet initialized at pos: ", hero.global_position, " dir: ", hero.aim_direction)
 
 	# Add bullet to game world (find the game world node)
 	var game_world = get_tree().root.get_node_or_null("GameWorld")
