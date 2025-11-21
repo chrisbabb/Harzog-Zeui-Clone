@@ -2,10 +2,12 @@ extends UnitBase
 class_name Soldier
 ## Soldier - Basic ground combat unit
 ##
-## Can attack: Ground units only (not air units)
-## Cannot attack: Air units (flying units, heroes in plane mode)
+## Can attack: Ground units (not air units) and enemy MAIN bases
+## Cannot attack: Air units, mini bases (only capturable by peons)
 ## Purpose: Basic ground combat, weakest combat unit
-## Targeting: Always targets closest enemy
+## Targeting: Always targets closest enemy (units or main base)
+##
+## Note: Turrets (future) will NOT attack bases, only units
 
 
 func _ready() -> void:
@@ -44,7 +46,7 @@ func _find_best_target_in_range():
 				closest_target = unit
 				closest_dist_sq = dist_sq
 
-	# Also check enemy bases
+	# Also check enemy MAIN bases (mini bases can only be captured, not attacked)
 	var all_bases = get_tree().get_nodes_in_group("main_bases")
 	for base in all_bases:
 		if _is_enemy(base):
