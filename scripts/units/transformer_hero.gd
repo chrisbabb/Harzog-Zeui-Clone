@@ -14,7 +14,7 @@ enum Form {
 	PLANE      # Air/flying form
 }
 
-var current_form: Form = Form.HUMANOID
+var current_form: Form = Form.PLANE  # Start in plane mode
 
 # Plane mode specifics
 var packaged_units_carried: Array = []
@@ -61,6 +61,7 @@ func _ready() -> void:
 	current_health = max_health
 	detection_range = 350.0
 	_apply_form_stats()
+	_update_visual()  # Set initial visual based on starting form
 	add_to_group("heroes")
 
 
@@ -124,11 +125,13 @@ func _apply_form_stats() -> void:
 		attack_range = humanoid_stats.attack_range
 		attack_damage = humanoid_stats.attack_damage
 		attack_cooldown = humanoid_stats.attack_cooldown
+		is_flying = false
 	else:  # PLANE
 		move_speed = plane_stats.move_speed
 		attack_range = plane_stats.attack_range
 		attack_damage = plane_stats.attack_damage
 		attack_cooldown = plane_stats.attack_cooldown
+		is_flying = true
 
 
 ## Pickup packaged units (only in plane mode, when over base)
@@ -298,9 +301,9 @@ func _respawn() -> void:
 	# Reset position to main base
 	global_position = main_base.global_position + Vector2(100, 0)
 
-	# Reset form to humanoid
-	if current_form == Form.PLANE:
-		_transform_to_humanoid()
+	# Reset form to plane mode
+	if current_form == Form.HUMANOID:
+		_transform_to_plane()
 
 	# Clear carried units
 	packaged_units_carried.clear()
