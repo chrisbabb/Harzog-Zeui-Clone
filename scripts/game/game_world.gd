@@ -102,6 +102,7 @@ func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
 	# TODO: Load actual base scene
 	var base = Node2D.new()
 	base.position = position
+	base.z_index = 0  # Ensure bases render below air units
 	base.set_meta("owner_slot", player.slot_index)
 	base.set_meta("team_color", player.color)
 	base.add_to_group("main_bases")

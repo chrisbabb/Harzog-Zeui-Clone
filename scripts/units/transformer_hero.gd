@@ -119,6 +119,11 @@ func _transform_to_plane() -> void:
 	is_flying = true
 	plane_acceleration_time = 0.0  # Reset acceleration timer
 	z_index = 10  # Render on top of bases and ground units
+
+	# Change collision layers to fly over ground units and bases
+	collision_layer = 2  # Air layer
+	collision_mask = 2   # Only collide with other air units
+
 	_apply_form_stats()
 	_update_visual()
 	print("%s transformed to PLANE mode" % unit_name)
@@ -130,6 +135,11 @@ func _transform_to_humanoid() -> void:
 	current_form = Form.HUMANOID
 	is_flying = false
 	z_index = 0  # Reset to default rendering layer
+
+	# Change collision layers to collide with ground units and bases
+	collision_layer = 1  # Ground layer
+	collision_mask = 1   # Collide with ground units and bases
+
 	_apply_form_stats()
 
 	# Drop cargo when transforming to humanoid
