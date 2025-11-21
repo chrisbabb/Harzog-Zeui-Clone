@@ -48,6 +48,9 @@ var plane_stats = {
 var plane_acceleration_time: float = 0.0
 const PLANE_ACCELERATION_DURATION: float = 1.0  # 1 second to reach max speed
 
+# Cooldown indicator (shows attack cooldown)
+var cooldown_indicator: CooldownIndicator = null
+
 # Target priorities (same as ground soldier when in humanoid form)
 const PRIORITY_ENEMY_HERO = 100
 const PRIORITY_ENEMY_DEATH_TURRET = 95
@@ -68,6 +71,7 @@ func _ready() -> void:
 	_apply_form_stats()
 	_update_visual()  # Set initial visual based on starting form
 	add_to_group("heroes")
+	_create_cooldown_indicator()
 
 
 func _physics_process(delta: float) -> void:
@@ -450,3 +454,10 @@ func _respawn() -> void:
 ## Set main base reference (called during initialization)
 func set_main_base(base) -> void:
 	main_base = base
+
+
+## Create cooldown indicator below unit
+func _create_cooldown_indicator() -> void:
+	cooldown_indicator = CooldownIndicator.new()
+	cooldown_indicator.set_tracked_unit(self)
+	add_child(cooldown_indicator)
