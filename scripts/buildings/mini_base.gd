@@ -116,7 +116,7 @@ func _create_capture_bars() -> void:
 	if num_players == 0:
 		num_players = 4  # Default to 4 if not initialized yet
 
-	var bar_width = 40
+	var bar_width = 34  # Width to fit exactly 4 peons (6px each + 2px gaps + 4px padding)
 	var bar_height = 8
 	var bar_spacing = 2
 	var start_y = 35  # Below the base
