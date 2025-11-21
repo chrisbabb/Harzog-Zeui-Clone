@@ -306,14 +306,21 @@ func _capture_by_player(player_slot: int) -> void:
 
 	print("Mini base captured by Player %d (%s)!" % [owner_slot, team_color])
 
-	# Make all peons visible again before clearing
+	# Eject peons from OTHER players (not the capturing player)
+	var peons_to_remove = []
 	for peon in peons_inside.keys():
-		if is_instance_valid(peon):
-			peon.visible = true
+		var peon_owner = peons_inside[peon]
+		if peon_owner != player_slot:
+			# This peon belongs to another player - eject it
+			if is_instance_valid(peon):
+				peon.visible = true
+			peons_to_remove.append(peon)
 
-	# Reset ALL peon counts (including the capturing player)
-	peon_counts.clear()
-	peons_inside.clear()
+	# Remove ejected peons from tracking
+	for peon in peons_to_remove:
+		var peon_owner = peons_inside[peon]
+		peons_inside.erase(peon)
+		peon_counts[peon_owner] = 0  # Reset other players' counts
 
 	# Update resource generation
 	_update_all_base_counts()
