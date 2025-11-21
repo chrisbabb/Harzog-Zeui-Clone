@@ -93,7 +93,7 @@ func _create_capture_zone() -> void:
 
 	# Set collision layers so it only detects units
 	capture_zone.collision_layer = 0
-	capture_zone.collision_mask = 2  # Units are on layer 2
+	capture_zone.collision_mask = 1  # Units are on layer 1
 
 	# Connect signals
 	capture_zone.body_entered.connect(_on_body_entered_capture_zone)
