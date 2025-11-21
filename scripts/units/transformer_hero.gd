@@ -92,7 +92,25 @@ func transform() -> void:
 	if current_form == Form.HUMANOID:
 		_transform_to_plane()
 	else:
+		# Check if transformation to humanoid is allowed
+		if not _can_transform_to_humanoid():
+			return
 		_transform_to_humanoid()
+
+
+## Check if transformation to humanoid is allowed
+func _can_transform_to_humanoid() -> bool:
+	# Can't transform while over a base
+	if _is_over_base():
+		print("Cannot transform to humanoid - over a base")
+		return false
+
+	# Can't transform while carrying cargo
+	if cargo_unit_type != "":
+		print("Cannot transform to humanoid - carrying cargo (%s)" % cargo_unit_type)
+		return false
+
+	return true
 
 
 ## Transform to plane mode (air unit)
@@ -100,6 +118,7 @@ func _transform_to_plane() -> void:
 	current_form = Form.PLANE
 	is_flying = true
 	plane_acceleration_time = 0.0  # Reset acceleration timer
+	z_index = 10  # Render on top of bases and ground units
 	_apply_form_stats()
 	_update_visual()
 	print("%s transformed to PLANE mode" % unit_name)
@@ -110,6 +129,7 @@ func _transform_to_plane() -> void:
 func _transform_to_humanoid() -> void:
 	current_form = Form.HUMANOID
 	is_flying = false
+	z_index = 0  # Reset to default rendering layer
 	_apply_form_stats()
 
 	# Drop cargo when transforming to humanoid
