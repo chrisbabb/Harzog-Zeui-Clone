@@ -69,32 +69,92 @@ func _make_strategic_decision(ai_player: Dictionary) -> void:
 ## Easy AI decision making
 func _easy_ai_decision(ai_player: Dictionary) -> void:
 	# Simple logic:
-	# - Build units based on fixed ratios
-	# - Attack nearest enemy base
-	# - Poor focus fire
-	# - No real adaptation
-	pass  # TODO: Implement when game systems are ready
+	# - Build peons first (up to 8) for mini base capture
+	# - Then build soldiers for defense/attack
+	# - Basic resource management
+
+	var player_slot = ai_player.slot
+	var resources = GameManager.get_player_resources(player_slot)
+	var current_build = GameManager.get_current_build(player_slot)
+
+	# Don't queue if already building
+	if not current_build.is_empty():
+		return
+
+	# Count current units
+	var peon_count = _count_units_of_type(player_slot, "peon")
+	var soldier_count = _count_units_of_type(player_slot, "soldier")
+
+	# Strategy: Build peons first (up to 8), then soldiers
+	if peon_count < 8 and resources >= 10:
+		GameManager.start_building_unit(player_slot, "peon")
+		print("AI Player %d: Building peon (%d/8)" % [player_slot, peon_count + 1])
+	elif resources >= 10:
+		GameManager.start_building_unit(player_slot, "soldier")
+		print("AI Player %d: Building soldier (%d total)" % [player_slot, soldier_count + 1])
+
+	# Try to pickup and deploy units
+	_ai_manage_unit_deployment(ai_player)
 
 
 ## Normal AI decision making
 func _normal_ai_decision(ai_player: Dictionary) -> void:
-	# Moderate logic:
-	# - Adapt composition based on enemy units
-	# - Reasonable focus fire
-	# - Capture mini-bases
-	# - Send coordinated waves
-	pass  # TODO: Implement when game systems are ready
+	# Moderate logic - for now same as Easy, will differentiate later
+	# - Build peons first (up to 12) for faster mini base capture
+	# - Then build soldiers
+
+	var player_slot = ai_player.slot
+	var resources = GameManager.get_player_resources(player_slot)
+	var current_build = GameManager.get_current_build(player_slot)
+
+	# Don't queue if already building
+	if not current_build.is_empty():
+		return
+
+	# Count current units
+	var peon_count = _count_units_of_type(player_slot, "peon")
+	var soldier_count = _count_units_of_type(player_slot, "soldier")
+
+	# Strategy: Build more peons than Easy AI
+	if peon_count < 12 and resources >= 10:
+		GameManager.start_building_unit(player_slot, "peon")
+		print("AI Player %d: Building peon (%d/12)" % [player_slot, peon_count + 1])
+	elif resources >= 10:
+		GameManager.start_building_unit(player_slot, "soldier")
+		print("AI Player %d: Building soldier (%d total)" % [player_slot, soldier_count + 1])
+
+	# Try to pickup and deploy units
+	_ai_manage_unit_deployment(ai_player)
 
 
 ## Hard AI decision making
 func _hard_ai_decision(ai_player: Dictionary) -> void:
-	# Advanced logic:
-	# - Strong counter-building
-	# - Excellent focus fire
-	# - Strategic mini-base control
-	# - Coordinated attacks
-	# - Predictive behavior
-	pass  # TODO: Implement when game systems are ready
+	# Advanced logic - for now same as Normal, will differentiate later
+	# - Build peons first (up to 16) for aggressive mini base control
+	# - Then build soldiers
+
+	var player_slot = ai_player.slot
+	var resources = GameManager.get_player_resources(player_slot)
+	var current_build = GameManager.get_current_build(player_slot)
+
+	# Don't queue if already building
+	if not current_build.is_empty():
+		return
+
+	# Count current units
+	var peon_count = _count_units_of_type(player_slot, "peon")
+	var soldier_count = _count_units_of_type(player_slot, "soldier")
+
+	# Strategy: Build even more peons for aggressive map control
+	if peon_count < 16 and resources >= 10:
+		GameManager.start_building_unit(player_slot, "peon")
+		print("AI Player %d: Building peon (%d/16)" % [player_slot, peon_count + 1])
+	elif resources >= 10:
+		GameManager.start_building_unit(player_slot, "soldier")
+		print("AI Player %d: Building soldier (%d total)" % [player_slot, soldier_count + 1])
+
+	# Try to pickup and deploy units
+	_ai_manage_unit_deployment(ai_player)
 
 
 ## Get default unit composition for difficulty
@@ -139,3 +199,62 @@ static func string_to_difficulty(difficulty_string: String) -> Difficulty:
 			return Difficulty.HARD
 		_:
 			return Difficulty.NORMAL
+
+
+## Count units of a specific type for a player
+func _count_units_of_type(player_slot: int, unit_type: String) -> int:
+	var count = 0
+	var all_units = get_tree().get_nodes_in_group("units")
+	for unit in all_units:
+		if "owner_slot" in unit and unit.owner_slot == player_slot:
+			if "unit_type" in unit and unit.unit_type == unit_type:
+				count += 1
+	return count
+
+
+## Find AI player's hero
+func _find_ai_hero(player_slot: int) -> Node:
+	var heroes = get_tree().get_nodes_in_group("heroes")
+	for hero in heroes:
+		if "owner_slot" in hero and hero.owner_slot == player_slot:
+			return hero
+	return null
+
+
+## Manage AI unit deployment (pickup from base and deploy)
+func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
+	var player_slot = ai_player.slot
+	var hero = _find_ai_hero(player_slot)
+
+	if not hero:
+		return
+
+	# Check if hero is in plane mode
+	if hero.current_form != 1:  # 1 = PLANE mode
+		# Transform to plane mode if not flying
+		hero.transform()
+		return
+
+	# Check if hero has cargo
+	if hero.cargo_unit_type != "":
+		# Deploy the unit if not over a base
+		if not hero._is_over_base():
+			hero.deploy_unit()
+	else:
+		# Try to pickup a unit from base
+		if GameManager.has_completed_units(player_slot):
+			# Move toward base and pickup
+			var main_base = _find_main_base(player_slot)
+			if main_base:
+				var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, main_base.global_position)
+				if dist_sq <= 150.0 * 150.0:  # Within pickup range
+					hero.pickup_packaged_unit()
+
+
+## Find player's main base
+func _find_main_base(player_slot: int) -> Node:
+	var bases = get_tree().get_nodes_in_group("main_bases")
+	for base in bases:
+		if base.has_meta("owner_slot") and base.get_meta("owner_slot") == player_slot:
+			return base
+	return null
