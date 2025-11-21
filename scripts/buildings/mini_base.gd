@@ -95,6 +95,7 @@ func _complete_capture() -> void:
 
 	# Get new owner from capturing unit
 	if "owner_slot" in capturing_unit and "team_color" in capturing_unit:
+		var old_owner = owner_slot
 		owner_slot = capturing_unit.owner_slot
 		team_color = capturing_unit.team_color
 		is_neutral = false
@@ -104,9 +105,36 @@ func _complete_capture() -> void:
 
 		print("Mini base captured by Player %d (%s)!" % [owner_slot, team_color])
 
+		# Update resource generation for all players
+		_update_all_base_counts()
+
 	# Reset capture state
 	capturing_unit = null
 	capture_progress = 0.0
+
+
+## Update base counts for all players (called after capture)
+func _update_all_base_counts() -> void:
+	# Count bases for each player
+	var base_counts: Dictionary = {}
+
+	# Count main bases
+	for base in get_tree().get_nodes_in_group("main_bases"):
+		if base.has_meta("owner_slot"):
+			var slot = base.get_meta("owner_slot")
+			base_counts[slot] = base_counts.get(slot, 0) + 1
+
+	# Count mini bases
+	for mini_base in get_tree().get_nodes_in_group("mini_bases"):
+		if not mini_base.is_neutral:
+			var slot = mini_base.owner_slot
+			base_counts[slot] = base_counts.get(slot, 0) + 1
+
+	# Update GameManager with new counts
+	for player in GameManager.active_players:
+		var slot = player.slot_index
+		var count = base_counts.get(slot, 1)  # At least main base
+		GameManager.set_player_base_count(slot, count)
 
 
 ## Update visual based on ownership

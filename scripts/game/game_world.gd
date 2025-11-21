@@ -49,6 +49,9 @@ func _ready() -> void:
 	# Spawn mini bases across the map
 	_spawn_mini_bases()
 
+	# Initialize resource system
+	GameManager.initialize_resources()
+
 	# Create minimap UI
 	_create_minimap()
 
@@ -250,9 +253,9 @@ func _create_minimap() -> void:
 	# Load the minimap script
 	var minimap_script = load("res://scripts/ui/minimap.gd")
 
-	# Create a CanvasLayer to hold the minimap (so it stays on screen)
+	# Create a CanvasLayer to hold the UI elements (so they stay on screen)
 	var ui_layer = CanvasLayer.new()
-	ui_layer.name = "MinimapLayer"
+	ui_layer.name = "UILayer"
 	ui_layer.layer = 100  # High layer to ensure it's on top
 	add_child(ui_layer)
 
@@ -262,7 +265,13 @@ func _create_minimap() -> void:
 	minimap.set_game_world(self)
 	ui_layer.add_child(minimap)
 
-	print("Minimap created")
+	# Create resource display for player 1
+	var resource_display_script = load("res://scripts/ui/resource_display.gd")
+	var resource_display = resource_display_script.new()
+	resource_display.player_slot = 1  # Show player 1's resources
+	ui_layer.add_child(resource_display)
+
+	print("Minimap and resource display created")
 
 
 ## Get player cameras (for minimap access)

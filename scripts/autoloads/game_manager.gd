@@ -32,9 +32,21 @@ const AVAILABLE_COLORS = ["Red", "Blue", "Green", "Yellow", "Purple", "Orange"]
 # Active players in current match
 var active_players: Array = []
 
+# Resource system - resources per player slot
+var player_resources: Dictionary = {}  # slot_index -> resource_count
+var player_base_counts: Dictionary = {}  # slot_index -> number of bases owned
+
+# Resource generation settings
+const RESOURCES_PER_BASE_PER_SECOND: float = 1.0
+
 
 func _ready() -> void:
 	print("GameManager initialized")
+
+
+func _process(delta: float) -> void:
+	if current_state == GameState.IN_GAME:
+		_update_resource_generation(delta)
 
 
 ## Create a new player slot configuration
@@ -116,3 +128,53 @@ func end_game(winning_team: String) -> void:
 	current_state = GameState.GAME_OVER
 	# TODO: Show victory screen
 	print("Game over! Winner: Team %s" % winning_team)
+
+
+## Initialize resources for all active players
+func initialize_resources() -> void:
+	player_resources.clear()
+	player_base_counts.clear()
+
+	for player in active_players:
+		player_resources[player.slot_index] = 0.0
+		player_base_counts[player.slot_index] = 1  # Start with main base
+
+	print("Resources initialized for %d players" % active_players.size())
+
+
+## Update resource generation based on owned bases
+func _update_resource_generation(delta: float) -> void:
+	for player in active_players:
+		if player.is_eliminated:
+			continue
+
+		var slot = player.slot_index
+		var base_count = player_base_counts.get(slot, 0)
+		var resources_to_add = base_count * RESOURCES_PER_BASE_PER_SECOND * delta
+
+		player_resources[slot] = player_resources.get(slot, 0.0) + resources_to_add
+
+
+## Set the number of bases owned by a player
+func set_player_base_count(player_slot: int, count: int) -> void:
+	player_base_counts[player_slot] = count
+	print("Player %d now owns %d bases" % [player_slot, count])
+
+
+## Get a player's current resources
+func get_player_resources(player_slot: int) -> float:
+	return player_resources.get(player_slot, 0.0)
+
+
+## Spend resources for a player (returns true if successful)
+func spend_resources(player_slot: int, amount: float) -> bool:
+	var current = player_resources.get(player_slot, 0.0)
+	if current >= amount:
+		player_resources[player_slot] = current - amount
+		return true
+	return false
+
+
+## Add resources to a player (for testing or special events)
+func add_resources(player_slot: int, amount: float) -> void:
+	player_resources[player_slot] = player_resources.get(player_slot, 0.0) + amount
