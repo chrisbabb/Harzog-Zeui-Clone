@@ -113,8 +113,8 @@ func _physics_process(delta: float) -> void:
 		# Just make sure we keep moving toward it if not there yet
 		if dist_sq > 100.0 * 100.0:  # Not inside capture zone yet
 			# Move toward capture target using base class logic
-			if current_state == State.IDLE or current_state == State.MARCHING:
-				current_state = State.MARCHING
+			if current_state == State.IDLE or current_state == State.MARCHING_TO_TARGET:
+				current_state = State.MARCHING_TO_TARGET
 
 
 ## Attempt to capture a mini-base
