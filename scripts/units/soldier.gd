@@ -18,8 +18,11 @@ func _ready() -> void:
 	attack_range = 150.0
 	attack_damage = 15.0
 	attack_cooldown = 1.2
-	detection_range = 350.0  # About 1/4 of viewable map
+	detection_range = 350.0  # About 1/4 of viewable map (aggressive detection)
 	is_flying = false
+
+	# Soldiers are aggressive - they advance and attack enemies
+	stance = Stance.ADVANCE
 
 
 ## Find closest target in range (ground units only)
@@ -69,3 +72,28 @@ func _is_enemy(entity) -> bool:
 		return false
 
 	return entity.team_color != team_color
+
+
+## Choose where to march when no combat target (move toward enemy bases)
+func _choose_strategic_target() -> Vector2:
+	# Find nearest enemy base
+	var enemy_bases = []
+	for base in get_tree().get_nodes_in_group("main_bases"):
+		if _is_enemy(base):
+			enemy_bases.append(base)
+
+	if not enemy_bases.is_empty():
+		var closest_base = null
+		var closest_dist_sq = INF
+
+		for base in enemy_bases:
+			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
+			if dist_sq < closest_dist_sq:
+				closest_base = base
+				closest_dist_sq = dist_sq
+
+		if closest_base:
+			return closest_base.global_position
+
+	# No enemy bases found, stay in place
+	return global_position
