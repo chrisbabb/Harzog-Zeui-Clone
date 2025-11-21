@@ -44,9 +44,6 @@ func _ready() -> void:
 	# Initialize AI players
 	_initialize_ai_players()
 
-	# Spawn test enemies for each player
-	_spawn_test_enemies()
-
 	# Spawn mini bases across the map
 	_spawn_mini_bases()
 
