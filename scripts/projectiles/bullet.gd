@@ -106,7 +106,43 @@ func _try_damage_entity(entity: Node) -> void:
 	if entity.has_method("is_dead") and entity.is_dead():
 		return
 
-	# Deal damage
+	# Get shooter's form (if owner is a TransformerHero)
+	var shooter_is_plane = false
+	if owner_unit and "current_form" in owner_unit:
+		# Owner is a TransformerHero
+		shooter_is_plane = (owner_unit.current_form == 1)  # 1 = PLANE form
+
+	# Check if target is a TransformerHero
+	var target_is_hero = ("current_form" in entity)
+	var target_is_plane = false
+	if target_is_hero:
+		target_is_plane = (entity.current_form == 1)  # 1 = PLANE form
+
+	# Check if target is a base
+	var target_is_base = entity.is_in_group("main_bases")
+
+	# Apply targeting rules based on shooter's form
+	if shooter_is_plane:
+		# PLANE MODE: Can only hit other planes (heroes in plane form)
+		if target_is_hero:
+			# Can hit heroes only if they're also in plane form
+			if not target_is_plane:
+				return  # Target is in humanoid form, can't hit
+		else:
+			# Cannot hit ground units or buildings when in plane mode
+			return
+	else:
+		# HUMANOID/ROBOT MODE: Can hit ground units and humanoid heroes, but NOT bases
+		if target_is_base:
+			# Cannot damage bases directly in humanoid mode
+			return
+
+		if target_is_hero:
+			# Can hit heroes only if they're also in humanoid form
+			if target_is_plane:
+				return  # Target is in plane form, can't hit
+
+	# Valid target - deal damage
 	if entity.has_method("take_damage"):
 		entity.take_damage(damage)
 
