@@ -28,6 +28,10 @@ func _ready() -> void:
 
 ## Find closest target in range (ground units only)
 func _find_best_target_in_range():
+	# AI units only attack when visible to human players
+	if not _is_human_player() and not _is_visible_to_human_player():
+		return null
+
 	var closest_target = null
 	var closest_dist_sq = INF
 
@@ -50,6 +54,42 @@ func _find_best_target_in_range():
 				closest_dist_sq = dist_sq
 
 	return closest_target
+
+
+## Check if this unit belongs to a human player
+func _is_human_player() -> bool:
+	for player in GameManager.active_players:
+		if player.slot_index == owner_slot and player.type == "Human":
+			return true
+	return false
+
+
+## Check if this unit is visible to any human player's camera
+func _is_visible_to_human_player() -> bool:
+	var game_world = get_tree().root.get_node_or_null("GameWorld")
+	if not game_world:
+		return true  # Fallback: allow combat if can't find game world
+
+	var cameras = game_world.get_player_cameras()
+	for camera in cameras:
+		if camera and camera.enabled:
+			# Get camera's viewport rect in world coordinates
+			var viewport = camera.get_viewport()
+			if viewport:
+				var viewport_rect = viewport.get_visible_rect()
+				var camera_pos = camera.global_position
+
+				# Simple check: is unit within ~800 units of camera (approximate screen)
+				var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, camera_pos)
+				if dist_sq <= 800.0 * 800.0:
+					# Check if camera belongs to human player
+					var camera_owner = camera.get_parent()
+					if camera_owner and "owner_slot" in camera_owner:
+						for player in GameManager.active_players:
+							if player.slot_index == camera_owner.owner_slot and player.type == "Human":
+								return true
+
+	return false
 
 
 ## Check if this unit can target another unit
