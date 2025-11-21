@@ -92,23 +92,14 @@ func _physics_process(_delta: float) -> void:
 	hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
 
 
-## Try to pickup packaged units from base
+## Try to pickup packaged units from base or field units
 func _try_pickup() -> void:
 	if hero.current_form != TransformerHero.Form.PLANE:
 		print("Player %d: Cannot pickup - must be in PLANE mode" % player_index)
 		return
 
-	# Check if hero is near a friendly base
-	var bases = get_tree().get_nodes_in_group("main_bases")
-	for base in bases:
-		if base.has_meta("team_color") and base.get_meta("team_color") == hero.team_color:
-			var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, base.global_position)
-			if dist_sq <= 150.0 * 150.0:  # Within 150 units
-				print("Player %d: Attempting pickup from base" % player_index)
-				hero.pickup_packaged_unit()
-				return
-
-	print("Player %d: No friendly base nearby to pickup from" % player_index)
+	# Hero will try base first, then field units automatically
+	hero.pickup_packaged_unit()
 
 
 ## Update hero rotation to face mouse cursor

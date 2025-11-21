@@ -134,7 +134,7 @@ func _apply_form_stats() -> void:
 		is_flying = true
 
 
-## Pickup packaged units (only in plane mode, when over base)
+## Pickup packaged units from base OR field units (only in plane mode)
 func pickup_packaged_unit() -> bool:
 	if current_form != Form.PLANE:
 		print("Cannot pickup - must be in PLANE mode")
@@ -144,16 +144,59 @@ func pickup_packaged_unit() -> bool:
 		print("Cannot pickup - already carrying a unit (%s)" % cargo_unit_type)
 		return false
 
-	# Get completed unit from GameManager
+	# First try to pickup from base (completed builds)
 	var unit_type = GameManager.pickup_completed_unit(owner_slot)
 
-	if unit_type == "":
-		print("No completed units to pickup")
+	if unit_type != "":
+		cargo_unit_type = unit_type
+		print("Picked up %s from base (ready to deploy)" % unit_type)
+		return true
+
+	# If nothing at base, try to pickup from field
+	return pickup_field_unit()
+
+
+## Pickup a unit from the field (nearby friendly unit)
+func pickup_field_unit() -> bool:
+	if current_form != Form.PLANE:
 		return false
 
-	cargo_unit_type = unit_type
-	print("Picked up %s (ready to deploy)" % unit_type)
-	return true
+	if cargo_unit_type != "":
+		return false
+
+	# Find nearby friendly units that can be picked up
+	var all_units = get_tree().get_nodes_in_group("units")
+	var pickup_range = 150.0
+
+	for unit in all_units:
+		# Skip self
+		if unit == self:
+			continue
+
+		# Must be friendly
+		if not "team_color" in unit or unit.team_color != team_color:
+			continue
+
+		# Must be a valid unit type we can pick up
+		if not "unit_type" in unit:
+			continue
+
+		# Check distance
+		var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, unit.global_position)
+		if dist_sq <= pickup_range * pickup_range:
+			# Pick up this unit
+			var picked_unit_type = unit.unit_type
+
+			# Remove unit from world
+			unit.queue_free()
+
+			# Store in cargo
+			cargo_unit_type = picked_unit_type
+			print("Picked up %s from field (ready to redeploy)" % picked_unit_type)
+			return true
+
+	print("No friendly units nearby to pickup")
+	return false
 
 
 ## Deploy a packaged unit (only in plane mode)
