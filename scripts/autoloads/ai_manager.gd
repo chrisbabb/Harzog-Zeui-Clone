@@ -240,6 +240,9 @@ func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
 		# Deploy the unit if not over a base
 		if not hero._is_over_base():
 			hero.deploy_unit()
+		else:
+			# Move away from base to deploy
+			_ai_move_hero_away_from_base(hero, player_slot)
 	else:
 		# Try to pickup a unit from base
 		if GameManager.has_completed_units(player_slot):
@@ -249,6 +252,28 @@ func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
 				var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, main_base.global_position)
 				if dist_sq <= 150.0 * 150.0:  # Within pickup range
 					hero.pickup_packaged_unit()
+				else:
+					# Move toward base
+					_ai_move_hero_toward(hero, main_base.global_position)
+
+
+## Move AI hero toward a target position
+func _ai_move_hero_toward(hero: Node, target_pos: Vector2) -> void:
+	var direction = ToroidalWorld.toroidal_direction(hero.global_position, target_pos)
+	hero.velocity = direction * hero.move_speed
+	hero.move_and_slide()
+	hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
+
+
+## Move AI hero away from base
+func _ai_move_hero_away_from_base(hero: Node, player_slot: int) -> void:
+	var main_base = _find_main_base(player_slot)
+	if main_base:
+		# Move in opposite direction from base
+		var direction = ToroidalWorld.toroidal_direction(main_base.global_position, hero.global_position)
+		hero.velocity = direction * hero.move_speed
+		hero.move_and_slide()
+		hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
 
 
 ## Find player's main base
