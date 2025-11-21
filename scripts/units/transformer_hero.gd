@@ -37,11 +37,16 @@ var humanoid_stats = {
 }
 
 var plane_stats = {
-	"move_speed": 250.0,
+	"move_speed": 250.0,  # Starting speed
+	"max_speed": 280.0,   # Speed after 1 second acceleration
 	"attack_range": 100.0,
 	"attack_damage": 15.0,
 	"attack_cooldown": 0.5
 }
+
+# Plane acceleration
+var plane_acceleration_time: float = 0.0
+const PLANE_ACCELERATION_DURATION: float = 1.0  # 1 second to reach max speed
 
 # Target priorities (same as ground soldier when in humanoid form)
 const PRIORITY_ENEMY_HERO = 100
@@ -65,6 +70,19 @@ func _ready() -> void:
 	add_to_group("heroes")
 
 
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
+
+	# Handle plane acceleration
+	if current_form == Form.PLANE:
+		if plane_acceleration_time < PLANE_ACCELERATION_DURATION:
+			plane_acceleration_time += delta
+
+			# Lerp from starting speed to max speed over 1 second
+			var t = min(plane_acceleration_time / PLANE_ACCELERATION_DURATION, 1.0)
+			move_speed = lerp(plane_stats.move_speed, plane_stats.max_speed, t)
+
+
 ## Transform between humanoid and plane mode
 func transform() -> void:
 	if current_form == Form.HUMANOID:
@@ -77,6 +95,7 @@ func transform() -> void:
 func _transform_to_plane() -> void:
 	current_form = Form.PLANE
 	is_flying = true
+	plane_acceleration_time = 0.0  # Reset acceleration timer
 	_apply_form_stats()
 	_update_visual()
 	print("%s transformed to PLANE mode" % unit_name)
