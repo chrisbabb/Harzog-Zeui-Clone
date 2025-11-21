@@ -104,9 +104,8 @@ func _try_pickup() -> void:
 		if base.has_meta("team_color") and base.get_meta("team_color") == hero.team_color:
 			var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, base.global_position)
 			if dist_sq <= 150.0 * 150.0:  # Within 150 units
-				# TODO: Get packaged unit from base
-				print("Player %d: Picking up unit from base" % player_index)
-				hero.pickup_packaged_unit(null)  # Placeholder
+				print("Player %d: Attempting pickup from base" % player_index)
+				hero.pickup_packaged_unit()
 				return
 
 	print("Player %d: No friendly base nearby to pickup from" % player_index)

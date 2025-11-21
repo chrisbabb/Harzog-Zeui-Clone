@@ -39,27 +39,43 @@ func _perform_attack() -> void:
 
 ## Override state behavior for peon-specific logic
 func _state_idle(_delta: float) -> void:
-	# If in ADVANCE stance, look for mini-bases to capture or return to main base
-	if stance == Stance.ADVANCE:
-		_look_for_capture_target()
+	# Always look for mini-bases to capture (not just in ADVANCE stance)
+	_look_for_capture_target()
 
 
 ## Look for mini-bases or control points to capture
 func _look_for_capture_target() -> void:
-	# Find nearest uncaptured or enemy mini-base
+	# Find ALL mini-bases that we don't own
 	var mini_bases = get_tree().get_nodes_in_group("mini_bases")
-	var valid_targets = []
+	var uncaptured_bases = []
 
 	for base in mini_bases:
-		if _is_enemy(base) or not base.has_meta("owner_slot"):
-			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
-			if dist_sq <= detection_range * detection_range:
-				valid_targets.append(base)
+		# Check if base is not owned by this player
+		var is_owned_by_me = false
+		if "owner_slot" in base and "is_neutral" in base:
+			if not base.is_neutral and base.owner_slot == owner_slot:
+				is_owned_by_me = true
 
-	if not valid_targets.is_empty():
-		current_capture_target = ToroidalWorld.find_nearest(global_position, valid_targets)
-		if current_capture_target:
-			_transition_to_marching()
+		# Add to targets if we don't own it
+		if not is_owned_by_me:
+			uncaptured_bases.append(base)
+
+	# Find the closest one (considering toroidal wrapping)
+	if not uncaptured_bases.is_empty():
+		var closest_base = null
+		var closest_dist_sq = INF
+
+		for base in uncaptured_bases:
+			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
+			if dist_sq < closest_dist_sq:
+				closest_dist_sq = dist_sq
+				closest_base = base
+
+		# Set as capture target and start moving
+		if closest_base:
+			current_capture_target = closest_base
+			if current_state == State.IDLE:
+				_transition_to_marching()
 
 
 ## Choose strategic target - move to mini-base or main base
@@ -86,15 +102,19 @@ func _choose_strategic_target() -> Vector2:
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 
+	# Always look for targets if we don't have one
+	if not current_capture_target or not is_instance_valid(current_capture_target):
+		_look_for_capture_target()
+
 	# Check if near capture target
 	if current_capture_target and is_instance_valid(current_capture_target):
 		var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, current_capture_target.global_position)
-		if dist_sq <= capture_range * capture_range:
-			_attempt_capture(delta)
-		else:
-			# Move toward capture target
-			if stance == Stance.ADVANCE:
-				_move_towards(current_capture_target.global_position, delta)
+		# Don't do anything special - the mini base area detection will handle capture
+		# Just make sure we keep moving toward it if not there yet
+		if dist_sq > 100.0 * 100.0:  # Not inside capture zone yet
+			# Move toward capture target using base class logic
+			if current_state == State.IDLE or current_state == State.MARCHING:
+				current_state = State.MARCHING
 
 
 ## Attempt to capture a mini-base

@@ -16,9 +16,9 @@ enum Form {
 
 var current_form: Form = Form.PLANE  # Start in plane mode
 
-# Plane mode specifics
-var packaged_units_carried: Array = []
-@export var max_packaged_units: int = 3
+# Plane mode specifics (cargo system)
+var cargo_unit_type: String = ""  # Type of unit being carried ("" means empty)
+@export var max_packaged_units: int = 1  # Can only carry 1 unit at a time
 
 # Respawn system
 var main_base = null  # Reference to player's main base for respawning
@@ -135,17 +135,24 @@ func _apply_form_stats() -> void:
 
 
 ## Pickup packaged units (only in plane mode, when over base)
-func pickup_packaged_unit(packaged_unit) -> bool:
+func pickup_packaged_unit() -> bool:
 	if current_form != Form.PLANE:
 		print("Cannot pickup - must be in PLANE mode")
 		return false
 
-	if packaged_units_carried.size() >= max_packaged_units:
-		print("Cannot pickup - already carrying max units (%d)" % max_packaged_units)
+	if cargo_unit_type != "":
+		print("Cannot pickup - already carrying a unit (%s)" % cargo_unit_type)
 		return false
 
-	packaged_units_carried.append(packaged_unit)
-	print("Picked up packaged unit (carrying %d/%d)" % [packaged_units_carried.size(), max_packaged_units])
+	# Get completed unit from GameManager
+	var unit_type = GameManager.pickup_completed_unit(owner_slot)
+
+	if unit_type == "":
+		print("No completed units to pickup")
+		return false
+
+	cargo_unit_type = unit_type
+	print("Picked up %s (ready to deploy)" % unit_type)
 	return true
 
 
@@ -155,14 +162,70 @@ func deploy_unit() -> bool:
 		print("Cannot deploy - must be in PLANE mode")
 		return false
 
-	if packaged_units_carried.is_empty():
+	if cargo_unit_type == "":
 		print("Cannot deploy - no units carried")
 		return false
 
-	var unit_to_deploy = packaged_units_carried.pop_front()
-	# TODO: Spawn the actual unit at current position
-	print("Deployed unit at position: %v (carrying %d/%d)" % [global_position, packaged_units_carried.size(), max_packaged_units])
+	# Check if trying to deploy on a base (not allowed)
+	if _is_over_base():
+		print("Cannot deploy - cannot place units on bases")
+		return false
+
+	# Spawn the unit at current position
+	_spawn_unit(cargo_unit_type, global_position)
+
+	# Clear cargo
+	cargo_unit_type = ""
+	print("Deployed unit at position: %v" % global_position)
 	return true
+
+
+## Check if hero is over a base
+func _is_over_base() -> bool:
+	# Check main bases
+	for base in get_tree().get_nodes_in_group("main_bases"):
+		var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
+		if dist_sq <= 100.0 * 100.0:  # Within 100 units of base
+			return true
+
+	# Check mini bases
+	for mini_base in get_tree().get_nodes_in_group("mini_bases"):
+		var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, mini_base.global_position)
+		if dist_sq <= 100.0 * 100.0:  # Within 100 units of mini base
+			return true
+
+	return false
+
+
+## Spawn a unit at a position
+func _spawn_unit(unit_type: String, position: Vector2) -> void:
+	var unit_data = GameManager.UNIT_DATA.get(unit_type)
+
+	if not unit_data:
+		push_error("Unknown unit type: %s" % unit_type)
+		return
+
+	# Load unit scene
+	var unit_scene = load(unit_data.scene)
+	if not unit_scene:
+		push_error("Failed to load scene for unit type: %s" % unit_type)
+		return
+
+	# Instantiate unit
+	var unit = unit_scene.instantiate()
+	unit.global_position = position
+	unit.owner_slot = owner_slot
+	unit.team_color = team_color
+
+	# Add to Units group in the scene
+	var units_node = get_tree().get_root().find_child("Units", true, false)
+	if units_node:
+		units_node.add_child(unit)
+	else:
+		# Fallback: add to current scene
+		get_tree().current_scene.get_node("Units").add_child(unit)
+
+	print("Spawned %s at %v for player %d" % [unit_type, position, owner_slot])
 
 
 ## Find best target in range (depends on current form)

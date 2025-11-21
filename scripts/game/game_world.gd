@@ -15,6 +15,7 @@ extends Node2D
 # Split-screen viewports
 var player_viewports: Array = []
 var player_cameras: Array = []
+var player_heroes: Array = []  # References to player heroes
 
 # UI elements
 var minimap: Control = null
@@ -84,6 +85,7 @@ func _spawn_players_and_bases() -> void:
 		# Spawn transformer hero
 		var hero = _create_transformer_hero(player, spawn_pos + Vector2(100, 0))
 		$Units.add_child(hero)
+		player_heroes.append(hero)  # Store reference
 
 		# Set main base reference for respawning
 		hero.set_main_base(base)
@@ -271,7 +273,26 @@ func _create_minimap() -> void:
 	resource_display.player_slot = 1  # Show player 1's resources
 	ui_layer.add_child(resource_display)
 
-	print("Minimap and resource display created")
+	# Create build progress indicator for player 1
+	var build_progress_script = load("res://scripts/ui/build_progress_indicator.gd")
+	var build_progress = build_progress_script.new()
+	build_progress.player_slot = 1
+	ui_layer.add_child(build_progress)
+
+	# Create build menu for player 1
+	var build_menu_script = load("res://scripts/ui/build_menu.gd")
+	var build_menu = build_menu_script.new()
+	build_menu.player_slot = 1
+	ui_layer.add_child(build_menu)
+
+	# Create cargo indicator for player 1
+	var cargo_indicator_script = load("res://scripts/ui/cargo_indicator.gd")
+	var cargo_indicator = cargo_indicator_script.new()
+	if player_heroes.size() > 0:
+		cargo_indicator.set_hero(player_heroes[0])  # Player 1's hero
+	ui_layer.add_child(cargo_indicator)
+
+	print("UI elements created (minimap, resources, build menu, cargo)")
 
 
 ## Get player cameras (for minimap access)

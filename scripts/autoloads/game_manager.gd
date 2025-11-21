@@ -39,6 +39,18 @@ var player_base_counts: Dictionary = {}  # slot_index -> number of bases owned
 # Resource generation settings
 const RESOURCES_PER_BASE_PER_SECOND: float = 1.0
 
+# Build system
+var player_build_queues: Dictionary = {}  # slot_index -> {current_build: {...}, completed_units: [...]}
+
+# Unit costs and build times
+const UNIT_DATA = {
+	"peon": {
+		"cost": 10,
+		"build_time": 5.0,
+		"scene": "res://scenes/units/peon.tscn"
+	}
+}
+
 
 func _ready() -> void:
 	print("GameManager initialized")
@@ -47,6 +59,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if current_state == GameState.IN_GAME:
 		_update_resource_generation(delta)
+		_update_build_queues(delta)
 
 
 ## Create a new player slot configuration
@@ -134,10 +147,15 @@ func end_game(winning_team: String) -> void:
 func initialize_resources() -> void:
 	player_resources.clear()
 	player_base_counts.clear()
+	player_build_queues.clear()
 
 	for player in active_players:
 		player_resources[player.slot_index] = 0.0
 		player_base_counts[player.slot_index] = 1  # Start with main base
+		player_build_queues[player.slot_index] = {
+			"current_build": null,  # {unit_type, progress, total_time}
+			"completed_units": []    # Array of unit_type strings
+		}
 
 	print("Resources initialized for %d players" % active_players.size())
 
@@ -178,3 +196,115 @@ func spend_resources(player_slot: int, amount: float) -> bool:
 ## Add resources to a player (for testing or special events)
 func add_resources(player_slot: int, amount: float) -> void:
 	player_resources[player_slot] = player_resources.get(player_slot, 0.0) + amount
+
+
+# ============================================
+# BUILD SYSTEM
+# ============================================
+
+## Start building a unit
+func start_building_unit(player_slot: int, unit_type: String) -> bool:
+	if not UNIT_DATA.has(unit_type):
+		push_error("Unknown unit type: %s" % unit_type)
+		return false
+
+	var unit_data = UNIT_DATA[unit_type]
+	var build_queue = player_build_queues.get(player_slot)
+
+	if not build_queue:
+		push_error("No build queue for player %d" % player_slot)
+		return false
+
+	# Check if already building
+	if build_queue.current_build != null:
+		print("Player %d is already building something" % player_slot)
+		return false
+
+	# Check resources
+	if not spend_resources(player_slot, unit_data.cost):
+		print("Player %d doesn't have enough resources (need %d)" % [player_slot, unit_data.cost])
+		return false
+
+	# Start building
+	build_queue.current_build = {
+		"unit_type": unit_type,
+		"progress": 0.0,
+		"total_time": unit_data.build_time
+	}
+
+	print("Player %d started building %s (cost: %d, time: %.1fs)" % [player_slot, unit_type, unit_data.cost, unit_data.build_time])
+	return true
+
+
+## Update build queues (called every frame)
+func _update_build_queues(delta: float) -> void:
+	for player in active_players:
+		if player.is_eliminated:
+			continue
+
+		var slot = player.slot_index
+		var build_queue = player_build_queues.get(slot)
+
+		if not build_queue or build_queue.current_build == null:
+			continue
+
+		# Update build progress
+		var current_build = build_queue.current_build
+		current_build.progress += delta
+
+		# Check if build is complete
+		if current_build.progress >= current_build.total_time:
+			_complete_build(slot, current_build.unit_type)
+
+
+## Complete a build and add to completed units
+func _complete_build(player_slot: int, unit_type: String) -> void:
+	var build_queue = player_build_queues.get(player_slot)
+
+	if not build_queue:
+		return
+
+	# Add to completed units
+	build_queue.completed_units.append(unit_type)
+
+	# Clear current build
+	build_queue.current_build = null
+
+	print("Player %d completed building %s! Ready for pickup." % [player_slot, unit_type])
+
+
+## Get current build info for a player
+func get_current_build(player_slot: int) -> Dictionary:
+	var build_queue = player_build_queues.get(player_slot)
+
+	if not build_queue or build_queue.current_build == null:
+		return {}
+
+	return build_queue.current_build
+
+
+## Get completed units count
+func get_completed_units_count(player_slot: int) -> int:
+	var build_queue = player_build_queues.get(player_slot)
+
+	if not build_queue:
+		return 0
+
+	return build_queue.completed_units.size()
+
+
+## Pickup a completed unit (returns unit type or empty string)
+func pickup_completed_unit(player_slot: int) -> String:
+	var build_queue = player_build_queues.get(player_slot)
+
+	if not build_queue or build_queue.completed_units.is_empty():
+		return ""
+
+	var unit_type = build_queue.completed_units.pop_front()
+	print("Player %d picked up %s" % [player_slot, unit_type])
+	return unit_type
+
+
+## Check if player has completed units waiting
+func has_completed_units(player_slot: int) -> bool:
+	return get_completed_units_count(player_slot) > 0
