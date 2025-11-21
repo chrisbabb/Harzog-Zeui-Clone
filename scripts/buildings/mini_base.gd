@@ -187,6 +187,9 @@ func _try_add_peon(entity: Node) -> void:
 	# Increment count
 	peon_counts[player_slot] = peon_counts.get(player_slot, 0) + 1
 
+	# Hide the peon while inside
+	entity.visible = false
+
 	print("Peon entered mini base - Player %d now has %d peons inside" % [player_slot, peon_counts[player_slot]])
 
 
@@ -210,6 +213,10 @@ func _try_remove_peon(entity: Node) -> void:
 	# Decrement count
 	peon_counts[player_slot] = max(0, peon_counts.get(player_slot, 0) - 1)
 
+	# Show the peon again when it exits
+	if is_instance_valid(entity):
+		entity.visible = true
+
 	print("Peon left mini base - Player %d now has %d peons inside" % [player_slot, peon_counts[player_slot]])
 
 
@@ -225,6 +232,7 @@ func _update_peon_counts() -> void:
 		var player_slot = peons_inside[peon]
 		peons_inside.erase(peon)
 		peon_counts[player_slot] = max(0, peon_counts.get(player_slot, 0) - 1)
+		# Note: No need to make visible - peon is already dead/invalid
 
 
 ## Update visual capture bars
@@ -291,6 +299,11 @@ func _capture_by_player(player_slot: int) -> void:
 	_update_visual()
 
 	print("Mini base captured by Player %d (%s)!" % [owner_slot, team_color])
+
+	# Make all peons visible again before clearing
+	for peon in peons_inside.keys():
+		if is_instance_valid(peon):
+			peon.visible = true
 
 	# Reset ALL peon counts (including the capturing player)
 	peon_counts.clear()
