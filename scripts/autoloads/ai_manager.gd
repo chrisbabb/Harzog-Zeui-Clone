@@ -229,59 +229,60 @@ func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
 	if not hero:
 		return
 
-	# Check if hero is in plane mode
-	if hero.current_form != 1:  # 1 = PLANE mode
-		# Transform to plane mode if not flying
-		hero.transform()
-		return
+	# Check if we have units to transport
+	var has_units_to_pickup = GameManager.has_completed_units(player_slot)
+	var has_cargo = hero.cargo_unit_type != ""
 
-	# Check if hero has cargo
-	if hero.cargo_unit_type != "":
-		# Deploy the unit if not over a base
-		if not hero._is_over_base():
-			hero.deploy_unit()
+	# Decision: Should we be in plane mode or humanoid mode?
+	var should_be_in_plane_mode = has_units_to_pickup or has_cargo
+
+	if should_be_in_plane_mode:
+		# We need to be in plane mode for transport
+		if hero.current_form != 1:  # Not in PLANE mode
+			hero.transform()
+			return
+
+		# Handle cargo deployment
+		if has_cargo:
+			if not hero._is_over_base():
+				hero.deploy_unit()
+				# After deploying, clear strategic target so unit can engage enemies
+				hero.strategic_target_position = Vector2.ZERO
+			else:
+				# Set strategic target to move away from base
+				var main_base = _find_main_base(player_slot)
+				if main_base:
+					var away_direction = ToroidalWorld.toroidal_direction(main_base.global_position, hero.global_position)
+					hero.strategic_target_position = hero.global_position + away_direction * 200.0
 		else:
-			# Move away from base to deploy
-			_ai_move_hero_away_from_base(hero, player_slot)
-	else:
-		# Try to pickup a unit from base
-		if GameManager.has_completed_units(player_slot):
-			# Move toward base and pickup
+			# Move toward base for pickup
 			var main_base = _find_main_base(player_slot)
 			if main_base:
 				var dist_sq = ToroidalWorld.toroidal_distance_squared(hero.global_position, main_base.global_position)
 				if dist_sq <= 150.0 * 150.0:  # Within pickup range
 					hero.pickup_packaged_unit()
+					# Clear target after pickup
+					hero.strategic_target_position = Vector2.ZERO
 				else:
-					# Move toward base
-					_ai_move_hero_toward(hero, main_base.global_position)
-		else:
-			# No units to transport - transform to humanoid for combat
-			# Check if safe to transform (not over a base)
+					# Set strategic target to base position
+					hero.strategic_target_position = main_base.global_position
+	else:
+		# No transport duties - switch to combat mode (humanoid)
+		if hero.current_form == 1:  # Currently in PLANE mode
+			# Check if safe to transform
 			if not hero._is_over_base():
 				hero.transform()  # Transform to humanoid mode
+				# Clear strategic target so combat AI takes over
+				hero.strategic_target_position = Vector2.ZERO
 			else:
 				# Move away from base first
-				_ai_move_hero_away_from_base(hero, player_slot)
-
-
-## Move AI hero toward a target position
-func _ai_move_hero_toward(hero: Node, target_pos: Vector2) -> void:
-	var direction = ToroidalWorld.toroidal_direction(hero.global_position, target_pos)
-	hero.velocity = direction * hero.move_speed
-	hero.move_and_slide()
-	hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
-
-
-## Move AI hero away from base
-func _ai_move_hero_away_from_base(hero: Node, player_slot: int) -> void:
-	var main_base = _find_main_base(player_slot)
-	if main_base:
-		# Move in opposite direction from base
-		var direction = ToroidalWorld.toroidal_direction(main_base.global_position, hero.global_position)
-		hero.velocity = direction * hero.move_speed
-		hero.move_and_slide()
-		hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
+				var main_base = _find_main_base(player_slot)
+				if main_base:
+					var away_direction = ToroidalWorld.toroidal_direction(main_base.global_position, hero.global_position)
+					hero.strategic_target_position = hero.global_position + away_direction * 200.0
+		else:
+			# Already in humanoid mode - clear strategic target and let combat AI work
+			hero.strategic_target_position = Vector2.ZERO
 
 
 ## Find player's main base

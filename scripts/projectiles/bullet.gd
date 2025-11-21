@@ -29,7 +29,7 @@ func _ready() -> void:
 
 	# Set collision layers
 	collision_layer = 0  # Bullet doesn't have a layer
-	collision_mask = 1  # Can hit layer 1 (units/buildings)
+	collision_mask = 3  # Can hit layer 1 (ground units) and layer 2 (air units)
 
 	# Create visual
 	_create_visual()
@@ -123,24 +123,22 @@ func _try_damage_entity(entity: Node) -> void:
 
 	# Apply targeting rules based on shooter's form
 	if shooter_is_plane:
-		# PLANE MODE: Can only hit other planes (heroes in plane form)
-		if target_is_hero:
-			# Can hit heroes only if they're also in plane form
-			if not target_is_plane:
-				return  # Target is in humanoid form, can't hit
-		else:
-			# Cannot hit ground units or buildings when in plane mode
+		# PLANE MODE: Can hit both air and ground units (flexible weapons)
+		# Can hit any enemy unit or hero in any form
+		# Cannot hit bases (bases are too fortified for plane weapons)
+		if target_is_base:
 			return
 	else:
-		# HUMANOID/ROBOT MODE: Can hit ground units and humanoid heroes, but NOT bases
+		# HUMANOID/ROBOT MODE: Ground-based combat
+		# Can hit ground units and heroes in humanoid form
+		# Cannot hit air units (heroes in plane form)
+		# Cannot hit bases (bases have their own separate destruction mechanic)
 		if target_is_base:
-			# Cannot damage bases directly in humanoid mode
 			return
 
-		if target_is_hero:
-			# Can hit heroes only if they're also in humanoid form
-			if target_is_plane:
-				return  # Target is in plane form, can't hit
+		if target_is_hero and target_is_plane:
+			# Cannot hit heroes in plane form when we're on the ground
+			return
 
 	# Valid target - deal damage
 	if entity.has_method("take_damage"):
