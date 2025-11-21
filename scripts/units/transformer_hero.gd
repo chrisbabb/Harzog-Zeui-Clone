@@ -112,10 +112,10 @@ func _transform_to_humanoid() -> void:
 	is_flying = false
 	_apply_form_stats()
 
-	# Drop all packaged units when transforming to humanoid
-	if not packaged_units_carried.is_empty():
-		print("Warning: Transforming to humanoid - dropping %d packaged units" % packaged_units_carried.size())
-		packaged_units_carried.clear()
+	# Drop cargo when transforming to humanoid
+	if cargo_unit_type != "":
+		print("Warning: Transforming to humanoid - dropping %s" % cargo_unit_type)
+		cargo_unit_type = ""
 
 	_update_visual()
 	print("%s transformed to HUMANOID mode" % unit_name)
@@ -434,8 +434,8 @@ func _respawn() -> void:
 	if current_form == Form.HUMANOID:
 		_transform_to_plane()
 
-	# Clear carried units
-	packaged_units_carried.clear()
+	# Clear cargo
+	cargo_unit_type = ""
 
 	# Clear target
 	current_target = null
