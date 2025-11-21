@@ -255,6 +255,14 @@ func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
 				else:
 					# Move toward base
 					_ai_move_hero_toward(hero, main_base.global_position)
+		else:
+			# No units to transport - transform to humanoid for combat
+			# Check if safe to transform (not over a base)
+			if not hero._is_over_base():
+				hero.transform()  # Transform to humanoid mode
+			else:
+				# Move away from base first
+				_ai_move_hero_away_from_base(hero, player_slot)
 
 
 ## Move AI hero toward a target position
