@@ -6,8 +6,7 @@ class_name PlayerController
 ## - Movement (WASD / D-Pad / Left Stick)
 ## - Transformation (Space / B button)
 ## - Attack (Mouse / A button)
-## - Pickup (E / X button)
-## - Deploy (R / Y button)
+## - Pickup/Deploy (E / X button) - instant toggle action
 ## - Build menu (B / L button)
 
 @export var player_index: int = 1  # Which player this controller is for (1-4)
@@ -43,13 +42,9 @@ func _process(_delta: float) -> void:
 	if InputManager.is_action_just_pressed(player_index, "transform"):
 		hero.transform()
 
-	# Handle pickup (only in plane mode)
+	# Handle pickup/deploy toggle (E key - instant action)
 	if InputManager.is_action_just_pressed(player_index, "pickup"):
-		_try_pickup()
-
-	# Handle deploy (only in plane mode)
-	if InputManager.is_action_just_pressed(player_index, "deploy"):
-		hero.deploy_unit()
+		_try_pickup_or_deploy()
 
 	# Handle build menu
 	if InputManager.is_action_just_pressed(player_index, "build_menu"):
@@ -92,14 +87,18 @@ func _physics_process(_delta: float) -> void:
 	hero.global_position = ToroidalWorld.wrap_position(hero.global_position)
 
 
-## Try to pickup packaged units from base or field units
-func _try_pickup() -> void:
+## Try to pickup or deploy units (instant toggle action)
+func _try_pickup_or_deploy() -> void:
 	if hero.current_form != TransformerHero.Form.PLANE:
-		print("Player %d: Cannot pickup - must be in PLANE mode" % player_index)
+		print("Player %d: Must be in PLANE mode to pickup/deploy" % player_index)
 		return
 
-	# Hero will try base first, then field units automatically
-	hero.pickup_packaged_unit()
+	# If carrying a unit, deploy it
+	if hero.cargo_unit_type != "":
+		hero.deploy_unit()
+	else:
+		# Otherwise, try to pickup a unit
+		hero.pickup_packaged_unit()
 
 
 ## Update hero rotation to face mouse cursor

@@ -45,8 +45,8 @@ func _update_display() -> void:
 		return
 
 	if hero.cargo_unit_type == "":
-		cargo_label.text = "Cargo: Empty"
+		cargo_label.text = "Cargo: Empty (Press E to pickup)"
 		cargo_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1.0))
 	else:
-		cargo_label.text = "Cargo: %s (Press R to deploy)" % hero.cargo_unit_type.capitalize()
+		cargo_label.text = "Cargo: %s (Press E to deploy)" % hero.cargo_unit_type.capitalize()
 		cargo_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3, 1.0))
