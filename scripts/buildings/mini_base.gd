@@ -333,8 +333,8 @@ func _update_all_base_counts() -> void:
 
 	# Count main bases
 	for base in get_tree().get_nodes_in_group("main_bases"):
-		if base.has_meta("owner_slot"):
-			var slot = base.get_meta("owner_slot")
+		if "owner_slot" in base:
+			var slot = base.owner_slot
 			base_counts[slot] = base_counts.get(slot, 0) + 1
 
 	# Count mini bases

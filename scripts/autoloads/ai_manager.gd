@@ -289,6 +289,6 @@ func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
 func _find_main_base(player_slot: int) -> Node:
 	var bases = get_tree().get_nodes_in_group("main_bases")
 	for base in bases:
-		if base.has_meta("owner_slot") and base.get_meta("owner_slot") == player_slot:
+		if "owner_slot" in base and base.owner_slot == player_slot:
 			return base
 	return null

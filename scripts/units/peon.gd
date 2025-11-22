@@ -126,7 +126,7 @@ func _attempt_capture(delta: float) -> void:
 
 ## Check if entity is an enemy
 func _is_enemy(entity) -> bool:
-	if not entity.has_meta("team_color"):
+	if not "team_color" in entity:
 		return false
 
-	return entity.get_meta("team_color") != team_color
+	return entity.team_color != team_color
