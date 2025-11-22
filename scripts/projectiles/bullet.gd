@@ -107,9 +107,11 @@ func _try_damage_entity(entity: Node) -> void:
 		return
 
 	# Get shooter's form (if owner is a TransformerHero)
+	var shooter_is_hero = false
 	var shooter_is_plane = false
 	if owner_unit and "current_form" in owner_unit:
 		# Owner is a TransformerHero
+		shooter_is_hero = true
 		shooter_is_plane = (owner_unit.current_form == 1)  # 1 = PLANE form
 
 	# Check if target is a TransformerHero
@@ -120,6 +122,10 @@ func _try_damage_entity(entity: Node) -> void:
 
 	# Check if target is a base
 	var target_is_base = entity.is_in_group("main_bases")
+
+	# MAIN BASES: Only soldiers can damage them, NOT transformer heroes
+	if target_is_base and shooter_is_hero:
+		return  # Heroes cannot damage main bases
 
 	# Apply targeting rules based on shooter's form
 	if shooter_is_plane:
@@ -136,8 +142,9 @@ func _try_damage_entity(entity: Node) -> void:
 			# Cannot hit ground units (soldiers, peons, etc.)
 			return
 	else:
-		# HUMANOID/ROBOT MODE: Ground-based combat
-		# Can hit ground units, heroes in humanoid form, and MAIN bases
+		# GROUND MODE (humanoid heroes or soldiers):
+		# Can hit ground units and heroes in humanoid form
+		# Soldiers can hit main bases, but heroes cannot (checked above)
 		# Cannot hit air units (heroes in plane form)
 		# Mini bases cannot be damaged (only captured)
 

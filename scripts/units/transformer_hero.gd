@@ -371,18 +371,8 @@ func _find_best_target_in_range():
 					"distance_sq": dist_sq
 				})
 
-	# In humanoid mode, can also target bases
-	if current_form == Form.HUMANOID:
-		var all_bases = get_tree().get_nodes_in_group("main_bases")
-		for base in all_bases:
-			if _is_enemy(base):
-				var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
-				if dist_sq <= detection_range * detection_range:
-					potential_targets.append({
-						"entity": base,
-						"priority": PRIORITY_ENEMY_BASE,
-						"distance_sq": dist_sq
-					})
+	# Transformer heroes CANNOT target main bases (only soldiers can damage bases)
+	# Heroes focus on unit-to-unit combat and transport duties
 
 	# No targets found
 	if potential_targets.is_empty():
@@ -481,17 +471,10 @@ func _perform_attack() -> void:
 
 ## Choose strategic target position
 func _choose_strategic_target() -> Vector2:
-	# Move toward nearest enemy main base
-	var enemy_bases = []
-	for base in get_tree().get_nodes_in_group("main_bases"):
-		if _is_enemy(base):
-			enemy_bases.append(base)
-
-	if not enemy_bases.is_empty():
-		var nearest_base = ToroidalWorld.find_nearest(global_position, enemy_bases)
-		if nearest_base:
-			return nearest_base.global_position
-
+	# Transformer heroes don't strategically move toward bases
+	# (only soldiers can damage bases)
+	# Heroes focus on unit combat and transport duties
+	# Stay in current position when no enemies in range
 	return global_position
 
 
