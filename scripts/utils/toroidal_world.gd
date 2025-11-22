@@ -92,9 +92,9 @@ static func find_nearest(from_pos: Vector2, entities: Array) -> Variant:
 
 	for entity in entities:
 		var entity_pos: Vector2
-		if entity.has("global_position"):
+		if "global_position" in entity:
 			entity_pos = entity.global_position
-		elif entity.has("position"):
+		elif "position" in entity:
 			entity_pos = entity.position
 		else:
 			continue
