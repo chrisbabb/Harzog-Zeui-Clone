@@ -11,17 +11,6 @@ var current_health: float = 1000.0
 var team_color: String = ""
 var owner_slot: int = -1
 
-func _ready() -> void:
-	# Get properties from metadata (set during creation)
-	if has_meta("max_health"):
-		max_health = get_meta("max_health")
-	if has_meta("current_health"):
-		current_health = get_meta("current_health")
-	if has_meta("team_color"):
-		team_color = get_meta("team_color")
-	if has_meta("owner_slot"):
-		owner_slot = get_meta("owner_slot")
-
 
 ## Take damage from attacks
 func take_damage(amount: float) -> void:

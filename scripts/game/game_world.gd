@@ -105,14 +105,17 @@ func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
 	base.collision_layer = 1  # Ground layer (blocks ground units)
 	base.collision_mask = 0   # Bases don't need to detect anything
 
-	base.set_meta("owner_slot", player.slot_index)
-	base.set_meta("team_color", player.color)
+	# Set the script FIRST so properties are defined
+	base.set_script(preload("res://scripts/buildings/main_base.gd"))
+
+	# Now set the properties directly (after script is set)
+	base.owner_slot = player.slot_index
+	base.team_color = player.color
+	base.max_health = 1000.0
+	base.current_health = 1000.0
+
 	base.add_to_group("main_bases")
 	base.add_to_group("buildings")
-
-	# Add health system to base
-	base.set_meta("max_health", 1000.0)
-	base.set_meta("current_health", 1000.0)
 
 	# Add collision shape
 	var collision = CollisionShape2D.new()
@@ -138,9 +141,6 @@ func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
 	health_bar.show_percentage = false
 	health_bar.name = "HealthBar"
 	base.add_child(health_bar)
-
-	# Add take_damage method to base
-	base.set_script(preload("res://scripts/buildings/main_base.gd"))
 
 	return base
 
