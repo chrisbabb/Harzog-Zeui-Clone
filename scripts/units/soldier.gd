@@ -117,6 +117,42 @@ func _is_enemy(entity) -> bool:
 	return entity.team_color != team_color
 
 
+## Override attack to spawn bullets instead of direct damage
+func _perform_attack() -> void:
+	if not current_target:
+		return
+
+	# Load bullet scene
+	var BulletScene = preload("res://scenes/projectiles/bullet.tscn")
+	var bullet = BulletScene.instantiate()
+
+	# Calculate direction to target
+	var target_pos = _get_target_position(current_target)
+	var direction = ToroidalWorld.toroidal_direction(global_position, target_pos)
+
+	# Bullet range based on attack range (extended for better reach)
+	var bullet_range = attack_range * 3.0
+
+	# Initialize bullet
+	bullet.initialize(
+		global_position,
+		direction,
+		attack_damage,
+		bullet_range,
+		team_color,
+		self
+	)
+
+	# Add bullet to game world
+	var game_world = get_tree().root.get_node_or_null("GameWorld")
+	if game_world:
+		var projectiles_node = game_world.get_node_or_null("Projectiles")
+		if projectiles_node:
+			projectiles_node.add_child(bullet)
+		else:
+			game_world.add_child(bullet)
+
+
 ## Choose where to march when no combat target (move toward enemy bases)
 func _choose_strategic_target() -> Vector2:
 	# Find nearest enemy base
