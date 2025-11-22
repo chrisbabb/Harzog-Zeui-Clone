@@ -122,6 +122,11 @@ func _try_damage_entity(entity: Node) -> void:
 
 	# Check if target is a base
 	var target_is_base = entity.is_in_group("main_bases")
+	var target_is_mini_base = entity.is_in_group("mini_bases")
+
+	# MINI BASES: Cannot be damaged by anyone (only captured by peons)
+	if target_is_mini_base:
+		return  # Mini bases are immune to all damage
 
 	# MAIN BASES: Only soldiers can damage them, NOT transformer heroes
 	if target_is_base and shooter_is_hero:

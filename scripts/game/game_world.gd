@@ -363,20 +363,69 @@ func _show_victory_screen(winner: Dictionary) -> void:
 	print("Player %d (%s) WINS!" % [winner.slot_index, winner.color])
 	print("======================")
 
+	# Pause the game
+	get_tree().paused = true
+
 	# Create victory UI overlay
 	var ui_layer = get_node_or_null("UILayer")
-	if ui_layer:
-		var victory_label = Label.new()
-		victory_label.text = "PLAYER %d (%s) WINS!" % [winner.slot_index, winner.color]
-		victory_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		victory_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		victory_label.position = Vector2(get_viewport().get_visible_rect().size.x / 2 - 200, get_viewport().get_visible_rect().size.y / 2 - 50)
-		victory_label.size = Vector2(400, 100)
-		victory_label.add_theme_font_size_override("font_size", 32)
-		victory_label.add_theme_color_override("font_color", _get_color_from_string(winner.color))
-		ui_layer.add_child(victory_label)
+	if not ui_layer:
+		return
 
-	# TODO: Add proper game over handling (pause, restart options, etc.)
+	# Create semi-transparent dark background
+	var overlay = ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.7)
+	overlay.size = get_viewport().get_visible_rect().size
+	overlay.position = Vector2.ZERO
+	overlay.z_index = 1000
+	ui_layer.add_child(overlay)
+
+	# Create victory panel
+	var panel = PanelContainer.new()
+	panel.position = Vector2(get_viewport().get_visible_rect().size.x / 2 - 300, get_viewport().get_visible_rect().size.y / 2 - 150)
+	panel.size = Vector2(600, 300)
+	panel.z_index = 1001
+	ui_layer.add_child(panel)
+
+	# Create vertical box layout for panel contents
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(vbox)
+
+	# Add spacing at top
+	var top_spacer = Control.new()
+	top_spacer.custom_minimum_size = Vector2(0, 40)
+	vbox.add_child(top_spacer)
+
+	# Victory title
+	var title_label = Label.new()
+	title_label.text = "VICTORY!"
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 48)
+	title_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0, 1.0))  # Gold color
+	vbox.add_child(title_label)
+
+	# Winner announcement
+	var winner_label = Label.new()
+	winner_label.text = "Player %d (%s) Wins!" % [winner.slot_index, winner.color]
+	winner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	winner_label.add_theme_font_size_override("font_size", 32)
+	winner_label.add_theme_color_override("font_color", _get_color_from_string(winner.color))
+	vbox.add_child(winner_label)
+
+	# Add spacing
+	var middle_spacer = Control.new()
+	middle_spacer.custom_minimum_size = Vector2(0, 40)
+	vbox.add_child(middle_spacer)
+
+	# Return to Main Menu button
+	var menu_button = Button.new()
+	menu_button.text = "Return to Main Menu"
+	menu_button.custom_minimum_size = Vector2(300, 60)
+	menu_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	menu_button.add_theme_font_size_override("font_size", 24)
+	menu_button.pressed.connect(_on_return_to_menu_pressed)
+	vbox.add_child(menu_button)
 
 
 ## Show draw screen (all bases destroyed simultaneously)
@@ -397,3 +446,17 @@ func _show_draw_screen() -> void:
 		draw_label.add_theme_font_size_override("font_size", 32)
 		draw_label.add_theme_color_override("font_color", Color.WHITE)
 		ui_layer.add_child(draw_label)
+
+
+## Handle return to main menu button press
+func _on_return_to_menu_pressed() -> void:
+	# Unpause the game
+	get_tree().paused = false
+
+	# Change to main menu scene
+	# If main menu exists, load it; otherwise reload current scene
+	if ResourceLoader.exists("res://scenes/ui/main_menu.tscn"):
+		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	else:
+		# Fallback: just reload the game
+		get_tree().reload_current_scene()
