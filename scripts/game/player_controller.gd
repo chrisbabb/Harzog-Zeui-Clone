@@ -115,6 +115,10 @@ func _update_rotation_to_mouse() -> void:
 
 ## Handle player attack (called continuously while attack button held)
 func _handle_player_attack(delta: float) -> void:
+	# Cannot attack while carrying cargo
+	if hero.cargo_unit_type != "":
+		return
+
 	# Check attack cooldown
 	hero.time_since_attack += delta
 	if hero.time_since_attack < hero.attack_cooldown:

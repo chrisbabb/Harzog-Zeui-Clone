@@ -51,6 +51,9 @@ const PLANE_ACCELERATION_DURATION: float = 1.0  # 1 second to reach max speed
 # Cooldown indicator (shows attack cooldown)
 var cooldown_indicator: CooldownIndicator = null
 
+# Cargo indicator (shows when carrying cargo)
+var cargo_indicator: Label = null
+
 # Target priorities (same as ground soldier when in humanoid form)
 const PRIORITY_ENEMY_HERO = 100
 const PRIORITY_ENEMY_DEATH_TURRET = 95
@@ -83,19 +86,36 @@ func _ready() -> void:
 	_update_visual()  # Set initial visual based on starting form
 	add_to_group("heroes")
 	_create_cooldown_indicator()
+	_create_cargo_indicator()
 
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 
-	# Handle plane acceleration
+	# Handle plane acceleration and cargo speed penalty
 	if current_form == Form.PLANE:
 		if plane_acceleration_time < PLANE_ACCELERATION_DURATION:
 			plane_acceleration_time += delta
 
 			# Lerp from starting speed to max speed over 1 second
 			var t = min(plane_acceleration_time / PLANE_ACCELERATION_DURATION, 1.0)
-			move_speed = lerp(plane_stats.move_speed, plane_stats.max_speed, t)
+			var base_speed = lerp(plane_stats.move_speed, plane_stats.max_speed, t)
+
+			# Apply 25% speed penalty when carrying cargo
+			if cargo_unit_type != "":
+				move_speed = base_speed * 0.75
+			else:
+				move_speed = base_speed
+		else:
+			# Apply 25% speed penalty when carrying cargo
+			if cargo_unit_type != "":
+				move_speed = plane_stats.max_speed * 0.75
+			else:
+				move_speed = plane_stats.max_speed
+
+	# Update cargo indicator visibility
+	if cargo_indicator:
+		cargo_indicator.visible = (cargo_unit_type != "")
 
 
 ## Transform between humanoid and plane mode
@@ -424,6 +444,10 @@ func _perform_attack() -> void:
 	if not current_target:
 		return
 
+	# Cannot attack while carrying cargo
+	if cargo_unit_type != "":
+		return
+
 	# Load bullet scene
 	var BulletScene = preload("res://scenes/projectiles/bullet.tscn")
 	var bullet = BulletScene.instantiate()
@@ -538,3 +562,23 @@ func _create_cooldown_indicator() -> void:
 	cooldown_indicator = CooldownIndicator.new()
 	cooldown_indicator.set_tracked_unit(self)
 	add_child(cooldown_indicator)
+
+
+## Create cargo indicator above unit
+func _create_cargo_indicator() -> void:
+	cargo_indicator = Label.new()
+	cargo_indicator.text = "CARGO"
+	cargo_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cargo_indicator.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+	# Position above the unit
+	cargo_indicator.position = Vector2(-25, -45)
+	cargo_indicator.size = Vector2(50, 15)
+
+	# Style the label
+	cargo_indicator.add_theme_color_override("font_color", Color(1.0, 0.8, 0.0, 1.0))  # Yellow/gold
+
+	# Start hidden
+	cargo_indicator.visible = false
+
+	add_child(cargo_indicator)

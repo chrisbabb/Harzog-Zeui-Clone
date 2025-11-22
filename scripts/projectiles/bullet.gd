@@ -123,18 +123,23 @@ func _try_damage_entity(entity: Node) -> void:
 
 	# Apply targeting rules based on shooter's form
 	if shooter_is_plane:
-		# PLANE MODE: Can hit both air and ground units (flexible weapons)
-		# Can hit any enemy unit or hero in any form
-		# Cannot hit bases (bases are too fortified for plane weapons)
+		# PLANE MODE: Can ONLY hit other planes (heroes in plane form)
+		# Air-to-air combat only
 		if target_is_base:
+			return  # Cannot hit bases
+
+		if target_is_hero:
+			# Can only hit if target is also in plane form
+			if not target_is_plane:
+				return  # Target is in humanoid form, can't hit
+		else:
+			# Cannot hit ground units (soldiers, peons, etc.)
 			return
 	else:
 		# HUMANOID/ROBOT MODE: Ground-based combat
-		# Can hit ground units and heroes in humanoid form
+		# Can hit ground units, heroes in humanoid form, and MAIN bases
 		# Cannot hit air units (heroes in plane form)
-		# Cannot hit bases (bases have their own separate destruction mechanic)
-		if target_is_base:
-			return
+		# Mini bases cannot be damaged (only captured)
 
 		if target_is_hero and target_is_plane:
 			# Cannot hit heroes in plane form when we're on the ground

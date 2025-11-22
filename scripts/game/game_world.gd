@@ -110,6 +110,10 @@ func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
 	base.add_to_group("main_bases")
 	base.add_to_group("buildings")
 
+	# Add health system to base
+	base.set_meta("max_health", 1000.0)
+	base.set_meta("current_health", 1000.0)
+
 	# Add collision shape
 	var collision = CollisionShape2D.new()
 	var shape = RectangleShape2D.new()
@@ -123,6 +127,20 @@ func _create_main_base(player: Dictionary, position: Vector2) -> Node2D:
 	sprite.position = Vector2(-50, -50)
 	sprite.color = _get_color_from_string(player.color)
 	base.add_child(sprite)
+
+	# Add health bar
+	var health_bar = ProgressBar.new()
+	health_bar.size = Vector2(100, 10)
+	health_bar.position = Vector2(-50, -65)
+	health_bar.min_value = 0
+	health_bar.max_value = 1000.0
+	health_bar.value = 1000.0
+	health_bar.show_percentage = false
+	health_bar.name = "HealthBar"
+	base.add_child(health_bar)
+
+	# Add take_damage method to base
+	base.set_script(preload("res://scripts/buildings/main_base.gd"))
 
 	return base
 
@@ -318,3 +336,64 @@ func _process(_delta: float) -> void:
 			# Ensure camera follows hero correctly across world boundaries
 			var hero_pos = camera.get_parent().global_position
 			camera.global_position = hero_pos
+
+
+## Handle main base destruction (win condition)
+func on_base_destroyed(destroyed_player_slot: int) -> void:
+	print("Player %d's main base was destroyed!" % destroyed_player_slot)
+
+	# Find remaining players
+	var remaining_players = []
+	for player in GameManager.active_players:
+		if player.slot_index != destroyed_player_slot:
+			remaining_players.append(player)
+
+	# Check win condition
+	if remaining_players.size() == 1:
+		var winner = remaining_players[0]
+		_show_victory_screen(winner)
+	elif remaining_players.size() == 0:
+		_show_draw_screen()
+
+
+## Show victory screen
+func _show_victory_screen(winner: Dictionary) -> void:
+	print("======================")
+	print("VICTORY!")
+	print("Player %d (%s) WINS!" % [winner.slot_index, winner.color])
+	print("======================")
+
+	# Create victory UI overlay
+	var ui_layer = get_node_or_null("UILayer")
+	if ui_layer:
+		var victory_label = Label.new()
+		victory_label.text = "PLAYER %d (%s) WINS!" % [winner.slot_index, winner.color]
+		victory_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		victory_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		victory_label.position = Vector2(get_viewport().get_visible_rect().size.x / 2 - 200, get_viewport().get_visible_rect().size.y / 2 - 50)
+		victory_label.size = Vector2(400, 100)
+		victory_label.add_theme_font_size_override("font_size", 32)
+		victory_label.add_theme_color_override("font_color", _get_color_from_string(winner.color))
+		ui_layer.add_child(victory_label)
+
+	# TODO: Add proper game over handling (pause, restart options, etc.)
+
+
+## Show draw screen (all bases destroyed simultaneously)
+func _show_draw_screen() -> void:
+	print("======================")
+	print("DRAW - All bases destroyed!")
+	print("======================")
+
+	# Create draw UI overlay
+	var ui_layer = get_node_or_null("UILayer")
+	if ui_layer:
+		var draw_label = Label.new()
+		draw_label.text = "DRAW - All bases destroyed!"
+		draw_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		draw_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		draw_label.position = Vector2(get_viewport().get_visible_rect().size.x / 2 - 200, get_viewport().get_visible_rect().size.y / 2 - 50)
+		draw_label.size = Vector2(400, 100)
+		draw_label.add_theme_font_size_override("font_size", 32)
+		draw_label.add_theme_color_override("font_color", Color.WHITE)
+		ui_layer.add_child(draw_label)
