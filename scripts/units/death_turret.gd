@@ -7,6 +7,7 @@ class_name DeathTurret
 ## Special: Can hit everything, prioritizes high-value targets and clusters
 
 # Target priority scores (higher = more preferred)
+const PRIORITY_ATTACKING_MY_BASE = 200  # Highest priority - defend the base!
 const PRIORITY_ENEMY_HERO = 100
 const PRIORITY_ENEMY_DEATH_TURRET = 95
 const PRIORITY_ENEMY_TANK = 90
@@ -85,6 +86,10 @@ func _find_best_target_in_range():
 
 ## Get priority score for a unit
 func _get_unit_priority(unit) -> int:
+	# Highest priority: enemies attacking our main base
+	if _is_unit_attacking_my_base(unit):
+		return PRIORITY_ATTACKING_MY_BASE
+
 	if "unit_type" in unit:
 		match unit.unit_type:
 			"transformer_hero":
@@ -101,6 +106,10 @@ func _get_unit_priority(unit) -> int:
 
 ## Get priority score for a turret
 func _get_turret_priority(turret) -> int:
+	# Highest priority: turrets attacking our main base
+	if _is_unit_attacking_my_base(turret):
+		return PRIORITY_ATTACKING_MY_BASE
+
 	if "unit_type" in turret:
 		match turret.unit_type:
 			"death_turret":
@@ -109,6 +118,25 @@ func _get_turret_priority(turret) -> int:
 				return PRIORITY_ENEMY_TURRET
 
 	return PRIORITY_ENEMY_TURRET  # Default
+
+
+## Check if enemy unit is attacking our main base
+func _is_unit_attacking_my_base(unit) -> bool:
+	# Check if unit has a target
+	if not "current_target" in unit or unit.current_target == null:
+		return false
+
+	var target = unit.current_target
+
+	# Check if target is a main base
+	if not target.is_in_group("main_bases"):
+		return false
+
+	# Check if it's OUR main base (same team)
+	if "team_color" in target:
+		return target.team_color == team_color
+
+	return false
 
 
 ## Check if entity is an enemy

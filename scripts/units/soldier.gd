@@ -29,6 +29,7 @@ func _ready() -> void:
 
 
 ## Find closest target in range (ground units only)
+## PRIORITY: Enemies attacking our main base are targeted first
 func _find_best_target_in_range():
 	# AI units only attack when visible to human players
 	if not _is_human_player() and not _is_visible_to_human_player():
@@ -36,15 +37,23 @@ func _find_best_target_in_range():
 
 	var closest_target = null
 	var closest_dist_sq = INF
+	var base_attacker_target = null
+	var base_attacker_dist_sq = INF
 
 	# Check all enemy units
 	var all_units = get_tree().get_nodes_in_group("units")
 	for unit in all_units:
 		if _is_enemy(unit) and _can_target_unit(unit):
 			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, unit.global_position)
-			if dist_sq <= detection_range * detection_range and dist_sq < closest_dist_sq:
-				closest_target = unit
-				closest_dist_sq = dist_sq
+			if dist_sq <= detection_range * detection_range:
+				# Check if this enemy is attacking our main base
+				if _is_unit_attacking_my_base(unit):
+					if dist_sq < base_attacker_dist_sq:
+						base_attacker_target = unit
+						base_attacker_dist_sq = dist_sq
+				elif dist_sq < closest_dist_sq:
+					closest_target = unit
+					closest_dist_sq = dist_sq
 
 	# Also check enemy MAIN bases (mini bases can only be captured, not attacked)
 	var all_bases = get_tree().get_nodes_in_group("main_bases")
@@ -55,7 +64,30 @@ func _find_best_target_in_range():
 				closest_target = base
 				closest_dist_sq = dist_sq
 
+	# Prioritize base attackers over regular targets
+	if base_attacker_target:
+		return base_attacker_target
+
 	return closest_target
+
+
+## Check if enemy unit is attacking our main base
+func _is_unit_attacking_my_base(unit) -> bool:
+	# Check if unit has a target
+	if not "current_target" in unit or unit.current_target == null:
+		return false
+
+	var target = unit.current_target
+
+	# Check if target is a main base
+	if not target.is_in_group("main_bases"):
+		return false
+
+	# Check if it's OUR main base (same team)
+	if "team_color" in target:
+		return target.team_color == team_color
+
+	return false
 
 
 ## Check if this unit belongs to a human player
