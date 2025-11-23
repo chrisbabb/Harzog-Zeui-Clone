@@ -35,29 +35,43 @@ func _ready() -> void:
 func _find_best_target_in_range():
 	var potential_targets = []
 
-	# Get all enemy units
-	var all_units = get_tree().get_nodes_in_group("units")
-	for unit in all_units:
-		if _is_enemy(unit) and _can_target_unit(unit):
-			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, unit.global_position)
-			if dist_sq <= detection_range * detection_range:
-				potential_targets.append({
-					"entity": unit,
-					"priority": _get_unit_priority(unit),
-					"distance_sq": dist_sq
-				})
+	# ATTACK_BASE_ONLY mode: only target main bases
+	if _should_only_target_bases():
+		var all_bases = get_tree().get_nodes_in_group("main_bases")
+		for base in all_bases:
+			if _is_enemy(base):
+				var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
+				if dist_sq <= detection_range * detection_range:
+					potential_targets.append({
+						"entity": base,
+						"priority": PRIORITY_ENEMY_BASE,
+						"distance_sq": dist_sq
+					})
+	else:
+		# Normal mode: target units and bases
+		# Get all enemy units
+		var all_units = get_tree().get_nodes_in_group("units")
+		for unit in all_units:
+			if _is_enemy(unit) and _can_target_unit(unit):
+				var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, unit.global_position)
+				if dist_sq <= detection_range * detection_range:
+					potential_targets.append({
+						"entity": unit,
+						"priority": _get_unit_priority(unit),
+						"distance_sq": dist_sq
+					})
 
-	# Get all enemy bases
-	var all_bases = get_tree().get_nodes_in_group("main_bases")
-	for base in all_bases:
-		if _is_enemy(base):
-			var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
-			if dist_sq <= detection_range * detection_range:
-				potential_targets.append({
-					"entity": base,
-					"priority": PRIORITY_ENEMY_BASE,
-					"distance_sq": dist_sq
-				})
+		# Get all enemy bases
+		var all_bases = get_tree().get_nodes_in_group("main_bases")
+		for base in all_bases:
+			if _is_enemy(base):
+				var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
+				if dist_sq <= detection_range * detection_range:
+					potential_targets.append({
+						"entity": base,
+						"priority": PRIORITY_ENEMY_BASE,
+						"distance_sq": dist_sq
+					})
 
 	# No targets found
 	if potential_targets.is_empty():

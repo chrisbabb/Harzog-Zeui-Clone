@@ -284,7 +284,8 @@ func pickup_field_unit() -> bool:
 
 
 ## Deploy a packaged unit (only in plane mode)
-func deploy_unit() -> bool:
+## behavior_mode: 0 = NORMAL, 1 = GUARD_POSITION, 2 = ATTACK_BASE_ONLY
+func deploy_unit(behavior_mode: int = 0) -> bool:
 	if current_form != Form.PLANE:
 		print("Cannot deploy - must be in PLANE mode")
 		return false
@@ -298,8 +299,8 @@ func deploy_unit() -> bool:
 		print("Cannot deploy - cannot place units on bases")
 		return false
 
-	# Spawn the unit at current position
-	_spawn_unit(cargo_unit_type, global_position)
+	# Spawn the unit at current position with specified behavior mode
+	_spawn_unit(cargo_unit_type, global_position, behavior_mode)
 
 	# Clear cargo
 	cargo_unit_type = ""
@@ -324,8 +325,9 @@ func _is_over_base() -> bool:
 	return false
 
 
-## Spawn a unit at a position
-func _spawn_unit(unit_type: String, position: Vector2) -> void:
+## Spawn a unit at a position with specified behavior mode
+## behavior_mode: 0 = NORMAL, 1 = GUARD_POSITION, 2 = ATTACK_BASE_ONLY
+func _spawn_unit(unit_type: String, position: Vector2, behavior_mode: int = 0) -> void:
 	var unit_data = GameManager.UNIT_DATA.get(unit_type)
 
 	if not unit_data:
@@ -344,7 +346,7 @@ func _spawn_unit(unit_type: String, position: Vector2) -> void:
 	unit.owner_slot = owner_slot
 	unit.team_color = team_color
 
-	# Add to Units group in the scene
+	# Add to Units group in the scene first (required for _ready())
 	var units_node = get_tree().get_root().find_child("Units", true, false)
 	if units_node:
 		units_node.add_child(unit)
@@ -352,7 +354,20 @@ func _spawn_unit(unit_type: String, position: Vector2) -> void:
 		# Fallback: add to current scene
 		get_tree().current_scene.get_node("Units").add_child(unit)
 
-	print("Spawned %s at %v for player %d" % [unit_type, position, owner_slot])
+	# Set behavior mode after adding to scene tree
+	if behavior_mode == 1:  # GUARD_POSITION
+		# Check if unit is a turret (turrets can't guard, they're immobile)
+		if not _is_turret(unit_type):
+			unit.set_guard_position(position)
+	elif behavior_mode == 2:  # ATTACK_BASE_ONLY
+		unit.set_attack_base_only()
+
+	print("Spawned %s at %v for player %d (behavior: %d)" % [unit_type, position, owner_slot, behavior_mode])
+
+
+## Check if unit type is a turret
+func _is_turret(unit_type: String) -> bool:
+	return unit_type in ["gun_turret", "missile_turret", "death_turret"]
 
 
 ## Find best target in range (depends on current form)

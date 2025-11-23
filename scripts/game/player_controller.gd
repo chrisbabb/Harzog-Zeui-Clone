@@ -84,14 +84,27 @@ func _physics_process(_delta: float) -> void:
 
 
 ## Try to pickup or deploy units (instant toggle action)
+## Hold Shift to deploy in GUARD mode, Ctrl for ATTACK BASE ONLY mode
 func _try_pickup_or_deploy() -> void:
 	if hero.current_form != TransformerHero.Form.PLANE:
 		print("Player %d: Must be in PLANE mode to pickup/deploy" % player_index)
 		return
 
-	# If carrying a unit, deploy it
+	# If carrying a unit, deploy it with selected behavior mode
 	if hero.cargo_unit_type != "":
-		hero.deploy_unit()
+		var behavior_mode = 0  # Default: NORMAL
+
+		# Check for modifier keys to set behavior mode
+		if Input.is_key_pressed(KEY_SHIFT):
+			behavior_mode = 1  # GUARD_POSITION
+			print("Player %d: Deploying in GUARD mode" % player_index)
+		elif Input.is_key_pressed(KEY_CTRL):
+			behavior_mode = 2  # ATTACK_BASE_ONLY
+			print("Player %d: Deploying in ATTACK BASE ONLY mode" % player_index)
+		else:
+			print("Player %d: Deploying in NORMAL mode" % player_index)
+
+		hero.deploy_unit(behavior_mode)
 	else:
 		# Otherwise, try to pickup a unit
 		hero.pickup_packaged_unit()

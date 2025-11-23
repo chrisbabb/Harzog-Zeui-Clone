@@ -48,5 +48,12 @@ func _update_display() -> void:
 		cargo_label.text = "Cargo: Empty (Press E to pickup)"
 		cargo_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1.0))
 	else:
-		cargo_label.text = "Cargo: %s (Press E to deploy)" % hero.cargo_unit_type.capitalize()
+		# Check for modifier keys to show deployment mode
+		var mode_text = ""
+		if Input.is_key_pressed(KEY_SHIFT):
+			mode_text = " [GUARD MODE]"
+		elif Input.is_key_pressed(KEY_CTRL):
+			mode_text = " [ATTACK BASE]"
+
+		cargo_label.text = "Cargo: %s%s\n(E=Deploy, Shift=Guard, Ctrl=Attack Base)" % [hero.cargo_unit_type.capitalize(), mode_text]
 		cargo_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3, 1.0))

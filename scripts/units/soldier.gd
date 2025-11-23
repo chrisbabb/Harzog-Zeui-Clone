@@ -35,6 +35,20 @@ func _find_best_target_in_range():
 	if not _is_human_player() and not _is_visible_to_human_player():
 		return null
 
+	# ATTACK_BASE_ONLY mode: only target main bases
+	if _should_only_target_bases():
+		var closest_base = null
+		var closest_dist_sq = INF
+		var all_bases = get_tree().get_nodes_in_group("main_bases")
+		for base in all_bases:
+			if _is_enemy(base):
+				var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, base.global_position)
+				if dist_sq <= detection_range * detection_range and dist_sq < closest_dist_sq:
+					closest_base = base
+					closest_dist_sq = dist_sq
+		return closest_base
+
+	# Normal mode: target units and bases with priority
 	var closest_target = null
 	var closest_dist_sq = INF
 	var base_attacker_target = null

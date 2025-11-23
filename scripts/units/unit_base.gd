@@ -23,6 +23,13 @@ enum Stance {
 	ADVANCE
 }
 
+# Behavior mode enumeration (for deployed units)
+enum BehaviorMode {
+	NORMAL,              # Standard behavior
+	GUARD_POSITION,      # Guard a specific spot, return after combat
+	ATTACK_BASE_ONLY     # Only attack enemy main bases, ignore other units
+}
+
 # Unit properties
 @export var unit_name: String = "Unit"
 @export var unit_type: String = "generic"
@@ -41,6 +48,11 @@ var team_color: String = ""
 # State
 var current_state: State = State.IDLE
 var stance: Stance = Stance.ADVANCE
+var behavior_mode: BehaviorMode = BehaviorMode.NORMAL
+
+# Guard position (for GUARD_POSITION mode)
+var guard_position: Vector2 = Vector2.ZERO
+const GUARD_RETURN_THRESHOLD: float = 150.0  # Distance from guard position before returning
 
 # Targeting
 var current_target = null
@@ -100,6 +112,14 @@ func _update_state(delta: float) -> void:
 
 ## IDLE state behavior
 func _state_idle(_delta: float) -> void:
+	# Guard position mode: return to guard position if too far away
+	if behavior_mode == BehaviorMode.GUARD_POSITION:
+		var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, guard_position)
+		if dist_sq > GUARD_RETURN_THRESHOLD * GUARD_RETURN_THRESHOLD:
+			strategic_target_position = guard_position
+			_transition_to_marching()
+		return
+
 	# If in ADVANCE stance and no target, move toward strategic objective
 	if stance == Stance.ADVANCE and not current_target:
 		_transition_to_marching()
@@ -125,6 +145,15 @@ func _state_engaging(delta: float) -> void:
 
 	var target_pos = _get_target_position(current_target)
 	var dist_sq = ToroidalWorld.toroidal_distance_squared(global_position, target_pos)
+
+	# Guard position mode: don't chase targets too far from guard position
+	if behavior_mode == BehaviorMode.GUARD_POSITION:
+		var dist_from_guard_sq = ToroidalWorld.toroidal_distance_squared(global_position, guard_position)
+		if dist_from_guard_sq > detection_range * detection_range:
+			# Too far from guard position, return
+			current_target = null
+			_transition_to_idle()
+			return
 
 	# If target is in attack range, attack
 	if dist_sq <= attack_range * attack_range:
@@ -232,6 +261,14 @@ func _transition_to_engaging() -> void:
 
 ## Choose strategic target (override in subclasses)
 func _choose_strategic_target() -> Vector2:
+	# Attack base only mode: always target closest enemy main base
+	if behavior_mode == BehaviorMode.ATTACK_BASE_ONLY:
+		return _find_closest_enemy_main_base()
+
+	# Guard position mode: guard position is the strategic target
+	if behavior_mode == BehaviorMode.GUARD_POSITION:
+		return guard_position
+
 	return Vector2.ZERO
 
 
@@ -285,3 +322,45 @@ func set_owner_info(slot: int, color: String) -> void:
 ## Set stance
 func set_stance(new_stance: Stance) -> void:
 	stance = new_stance
+
+
+## Set behavior mode to guard a specific position
+func set_guard_position(position: Vector2) -> void:
+	behavior_mode = BehaviorMode.GUARD_POSITION
+	guard_position = position
+	stance = Stance.ADVANCE  # Guards actively engage enemies
+	print("%s set to GUARD position at %v" % [unit_name, position])
+
+
+## Set behavior mode to attack base only
+func set_attack_base_only() -> void:
+	behavior_mode = BehaviorMode.ATTACK_BASE_ONLY
+	stance = Stance.ADVANCE
+	print("%s set to ATTACK BASE ONLY mode" % unit_name)
+
+
+## Set behavior mode to normal
+func set_normal_behavior() -> void:
+	behavior_mode = BehaviorMode.NORMAL
+	guard_position = Vector2.ZERO
+	print("%s set to NORMAL behavior" % unit_name)
+
+
+## Find closest enemy main base position
+func _find_closest_enemy_main_base() -> Vector2:
+	var enemy_bases = []
+	for base in get_tree().get_nodes_in_group("main_bases"):
+		if "team_color" in base and base.team_color != team_color:
+			enemy_bases.append(base)
+
+	if not enemy_bases.is_empty():
+		var closest_base = ToroidalWorld.find_nearest(global_position, enemy_bases)
+		if closest_base:
+			return closest_base.global_position
+
+	return global_position
+
+
+## Check if unit should only target main bases (for ATTACK_BASE_ONLY mode)
+func _should_only_target_bases() -> bool:
+	return behavior_mode == BehaviorMode.ATTACK_BASE_ONLY

@@ -245,7 +245,10 @@ func _ai_manage_unit_deployment(ai_player: Dictionary) -> void:
 		# Handle cargo deployment
 		if has_cargo:
 			if not hero._is_over_base():
-				hero.deploy_unit()
+				# AI uses ATTACK_BASE_ONLY mode for aggressive offense
+				# 70% chance to use attack base mode, 30% normal behavior
+				var behavior_mode = 2 if randf() < 0.7 else 0
+				hero.deploy_unit(behavior_mode)
 				# After deploying, clear strategic target so unit can engage enemies
 				hero.strategic_target_position = Vector2.ZERO
 			else:
