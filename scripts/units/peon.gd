@@ -10,6 +10,8 @@ class_name Peon
 @export var capture_rate: float = 1.0  # Points per second
 
 var current_capture_target = null
+var time_since_ownership_check: float = 0.0
+const OWNERSHIP_CHECK_INTERVAL: float = 0.1  # Check every 100ms
 
 
 func _ready() -> void:
@@ -103,6 +105,12 @@ func _choose_strategic_target() -> Vector2:
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 
+	# Update ownership check timer
+	time_since_ownership_check += delta
+	if time_since_ownership_check >= OWNERSHIP_CHECK_INTERVAL:
+		time_since_ownership_check = 0.0
+		_check_capture_target_ownership()
+
 	# Always look for targets if we don't have one
 	if not current_capture_target or not is_instance_valid(current_capture_target):
 		_look_for_capture_target()
@@ -116,6 +124,21 @@ func _physics_process(delta: float) -> void:
 			# Move toward capture target using base class logic
 			if current_state == State.IDLE or current_state == State.MARCHING_TO_TARGET:
 				current_state = State.MARCHING_TO_TARGET
+
+
+## Check if current capture target is already owned by us
+func _check_capture_target_ownership() -> void:
+	if not current_capture_target or not is_instance_valid(current_capture_target):
+		return
+
+	# Check if the target is now owned by us
+	if "owner_slot" in current_capture_target and "is_neutral" in current_capture_target:
+		var is_owned_by_me = not current_capture_target.is_neutral and current_capture_target.owner_slot == owner_slot
+
+		# If we already own it, pick a different target
+		if is_owned_by_me:
+			current_capture_target = null
+			_look_for_capture_target()
 
 
 ## Attempt to capture a mini-base
