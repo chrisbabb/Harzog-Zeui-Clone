@@ -1,20 +1,36 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/buildings/Outpost.gd" id="1"]
 
-[sub_resource type="BoxMesh" id="BoxMesh_outpost1"]
-size = Vector3(2, 2, 2)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_outpost1"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_outpost1"]
-size = Vector3(2, 2, 2)
+[sub_resource type="CylinderMesh" id="CylinderMesh_outpost1"]
+material = SubResource("StandardMaterial3D_outpost1")
+top_radius = 1.0
+bottom_radius = 1.3
+height = 4.0
+
+[sub_resource type="TorusMesh" id="TorusMesh_outpost1"]
+material = SubResource("StandardMaterial3D_outpost1")
+inner_radius = 5.5
+outer_radius = 6.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_outpost1"]
+radius = 1.3
+height = 4.0
 
 [node name="Outpost" type="StaticBody3D"]
 script = ExtResource("1")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
-mesh = SubResource("BoxMesh_outpost1")
+[node name="TowerMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+mesh = SubResource("CylinderMesh_outpost1")
+
+[node name="RingMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("TorusMesh_outpost1")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
-shape = SubResource("BoxShape3D_outpost1")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+shape = SubResource("CylinderShape3D_outpost1")

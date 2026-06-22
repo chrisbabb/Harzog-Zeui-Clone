@@ -1,43 +1,47 @@
 extends Node3D
-## Placeholder gameplay scene controller.
-## Spawns the player commander and each team's main base, then keeps the
-## camera rig following the commander.
+## Gameplay scene controller.
+## Generates the battlefield, spawns the player commander, and keeps the
+## camera rig smoothly following the commander within the arena bounds.
+## Match end-on-HQ-destruction and continuous income are already wired
+## through Base.gd/GameState/Economy; this script only needs to kick the
+## match off and drive the camera.
 
 const COMMANDER_SCENE: PackedScene = preload("res://scenes/player/Commander.tscn")
-const BASE_SCENE: PackedScene = preload("res://scenes/buildings/Base.tscn")
+const COMMANDER_SPAWN_OFFSET: Vector3 = Vector3(8.0, 0.0, 0.0)
 
 @onready var world_root: Node3D = $WorldRoot
-@onready var units_root: Node3D = $WorldRoot/UnitsRoot
-@onready var buildings_root: Node3D = $WorldRoot/BuildingsRoot
-@onready var player_spawn: Marker3D = $WorldRoot/PlayerSpawn
-@onready var enemy_spawn: Marker3D = $WorldRoot/EnemySpawn
 @onready var camera_rig: Node3D = $CameraRig
 
 var commander: Node3D = null
 
 
 func _ready() -> void:
-	_spawn_base(player_spawn.global_position, Constants.Team.PLAYER)
-	_spawn_base(enemy_spawn.global_position, Constants.Team.ENEMY)
-	_spawn_commander(player_spawn.global_position)
+	MapGenerator.generate_battlefield(self)
+	_spawn_commander()
+	camera_rig.global_position = _clamp_to_arena(commander.global_position)
 	GameState.start_match()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if commander == null:
 		return
-	camera_rig.global_position = Vector3(commander.global_position.x, 0.0, commander.global_position.z)
+	var target: Vector3 = _clamp_to_arena(commander.global_position)
+	var follow_factor: float = clamp(delta * Constants.CAMERA_FOLLOW_SPEED, 0.0, 1.0)
+	camera_rig.global_position = camera_rig.global_position.lerp(target, follow_factor)
 
 
-func _spawn_commander(spawn_position: Vector3) -> void:
+func _spawn_commander() -> void:
 	commander = COMMANDER_SCENE.instantiate()
 	world_root.add_child(commander)
-	commander.global_position = spawn_position
+	commander.global_position = GameState.player_hq.global_position + COMMANDER_SPAWN_OFFSET
 	GameState.player_commander = commander
 
 
-func _spawn_base(spawn_position: Vector3, team: int) -> void:
-	var base_instance: Node3D = BASE_SCENE.instantiate()
-	base_instance.team = team
-	buildings_root.add_child(base_instance)
-	base_instance.global_position = spawn_position
+func _clamp_to_arena(world_position: Vector3) -> Vector3:
+	var half_length: float = Constants.ARENA_LENGTH * 0.5 - Constants.CAMERA_CLAMP_MARGIN.x
+	var half_width: float = Constants.ARENA_WIDTH * 0.5 - Constants.CAMERA_CLAMP_MARGIN.y
+	return Vector3(
+		clamp(world_position.x, -half_length, half_length),
+		0.0,
+		clamp(world_position.z, -half_width, half_width)
+	)

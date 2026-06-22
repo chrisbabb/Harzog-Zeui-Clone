@@ -74,3 +74,24 @@ const ACTION_CONFIRM: String = "confirm"
 const ACTION_CANCEL: String = "cancel"
 const ACTION_PAUSE: String = "pause"
 const ACTION_MINIMAP_ZOOM: String = "minimap_zoom"
+
+# Battlefield dimensions
+const ARENA_LENGTH: float = 220.0
+const ARENA_WIDTH: float = 120.0
+
+# Camera follow/clamp behavior
+const CAMERA_FOLLOW_SPEED: float = 4.0
+const CAMERA_CLAMP_MARGIN: Vector2 = Vector2(35.0, 24.0)
+
+# Team color coding, shared by buildings/units and minimap alike
+const COLOR_PLAYER: Color = Color(0.2, 0.6, 1.0)
+const COLOR_ENEMY: Color = Color(1.0, 0.3, 0.2)
+const COLOR_NEUTRAL: Color = Color(0.6, 0.6, 0.6)
+
+
+static func team_color(team: int) -> Color:
+	if team == Team.PLAYER:
+		return COLOR_PLAYER
+	elif team == Team.ENEMY:
+		return COLOR_ENEMY
+	return COLOR_NEUTRAL
