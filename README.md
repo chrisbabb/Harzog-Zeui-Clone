@@ -1,229 +1,95 @@
-# Harzog-Zeui-Clone
+# Skyforge Command
 
-A local multiplayer RTS game where players control transformer heroes and build support units in a toroidal (wrap-around) world.
+Skyforge Command is an original 2.5D action-RTS prototype: a single commander
+who can transform between a ground form and an air form, leading built units
+against an enemy base on an angled, orthographic battlefield.
 
-## Features
+This is an early scaffold. Mechanics are inspired by the general conventions
+of classic transformable-commander RTS games (a hero that fights directly
+*and* manages base production), but everything here — names, assets, maps,
+and text — is original to this project. No copyrighted names, art, music,
+maps, or text from any existing game are used anywhere in this repository.
+All meshes are temporary primitive placeholders (capsules, boxes, prisms)
+until real art is produced.
 
-### Core Gameplay
-- **1-4 Player Split-Screen**: Supports 1-4 human players and/or AI opponents
-- **Transformer Heroes**: Each player controls a hero that can transform between:
-  - Humanoid form (ground unit)
-  - Plane form (air unit)
-- **Base Building**: Build and manage support units from your main base
-- **Toroidal World**: Map wraps around in all directions (north/south/east/west)
-- **Team-Based or Free-For-All**: Players with the same color are teammates
+## Opening the project in Godot
 
-### Unit Types (Planned)
-- Ground units: Basic Soldier, Tank, Peon
-- Anti-air units: Missile Soldier, Missile Tank
-- Turrets: Gun Turret, Missile Turret, Death Turret
-- Support: Peons for capturing mini-bases
+1. Install **Godot 4.x** (developed against the 4.3 feature set) from
+   [godotengine.org](https://godotengine.org/).
+2. Launch Godot and choose **Import**.
+3. Select the `project.godot` file at the root of this repository.
+4. Click **Import & Edit**.
+5. Press **F5** (or the Play button) to run the game — it boots into the
+   main menu first.
 
-### AI Difficulty Levels
-- **Easy**: Fixed build orders, poor focus fire
-- **Normal**: Adaptive composition, reasonable tactics
-- **Hard**: Strong counters, excellent coordination
+## Controls
 
-### Game Modes
-- Free-for-all (all different colors)
-- Team play (shared colors)
-- Human vs AI
-- AI vs AI spectator mode
+| Action | Keyboard / Mouse |
+| --- | --- |
+| Move forward / back | `W` / `S` (or `Up` / `Down`) |
+| Move left / right | `A` / `D` (or `Left` / `Right`) |
+| Fire primary weapon | `Left Mouse` or `Space` |
+| Transform (ground ↔ air) | `E` |
+| Pick up / drop unit | `Q` |
+| Open build menu | `B` |
+| Open command menu | `C` |
+| Confirm | `Enter` or `Left Mouse` |
+| Cancel | `Esc` or `Right Mouse` |
+| Pause | `Esc` |
+| Minimap zoom | `Tab` |
 
-## Technology Stack
+All bindings are defined in **Project Settings → Input Map** and referenced
+in code through `scripts/autoload/Constants.gd`, so they can be remapped in
+one place.
 
-- **Engine**: Godot 4.3
-- **Language**: GDScript
-- **Platform**: PC (Windows/Linux/Mac)
-- **Graphics**: 2D top-down perspective
+## Current development status
 
-## Project Structure
+This is a scaffold, not a playable build. What exists today:
+
+- Folder structure and autoload singletons (`GameState`, `EventBus`,
+  `Constants`, `Economy`).
+- A 3D `Game` scene with a navigable ground plane, an angled orthographic
+  camera, a player/enemy spawn marker, and a baked navigation mesh.
+- A transformable `Commander` that moves and switches between ground/air
+  placeholder meshes.
+- A generic `Unit` scaffold driven by `NavigationAgent3D`.
+- `Base` and `Outpost` building scaffolds with health/destruction stubs.
+- Menu flow: Main → Main Menu → Game, with a Pause Menu overlay.
+- HUD shell with a resource readout, build/command menu buttons, and a
+  minimap that plots registered units and buildings.
+
+What's intentionally not implemented yet: real combat resolution, build
+queues actually spending resources to spawn units, AI opponents, real art
+and audio, and saved/loaded matches (`scripts/save` and `data/maps` are
+empty scaffolds for this work).
+
+## Project structure
 
 ```
-Harzog-Zeui-Clone/
-├── assets/                 # Game assets
-│   ├── audio/             # Music and sound effects
-│   └── sprites/           # Textures and sprites
-├── scenes/                # Godot scenes
-│   ├── game/              # Game world and gameplay scenes
-│   ├── ui/                # Menu and UI scenes
-│   ├── units/             # Unit scenes
-│   └── buildings/         # Building scenes
-├── scripts/               # GDScript files
-│   ├── autoloads/         # Global singleton scripts
-│   ├── game/              # Game logic
-│   ├── units/             # Unit behavior
-│   ├── ai/                # AI systems
-│   ├── ui/                # UI controllers
-│   └── utils/             # Utility functions
-├── project.godot          # Godot project configuration
-├── CLAUDE.md              # AI assistant development guide
-└── README.md              # This file
+scenes/
+  main/        Main.tscn (entry point), Game.tscn (battlefield)
+  player/      Commander.tscn
+  units/       Unit.tscn
+  buildings/   Base.tscn, Outpost.tscn
+  ui/          HUD, BuildMenu, CommandMenu, Minimap, MainMenu, PauseMenu
+  effects/     reserved for VFX scenes
+scripts/
+  autoload/    GameState, EventBus, Constants, Economy
+  main/        Main.gd, Game.gd
+  player/      Commander.gd
+  units/       Unit.gd
+  buildings/   Base.gd, Outpost.gd
+  ai/          reserved for AI opponent logic
+  map/         TerrainRoot.gd (navigation mesh baking)
+  ui/          HUD/menu scripts
+  save/        reserved for save/load logic
+assets/        placeholder art, audio, fonts (no copyrighted assets)
+data/maps/     reserved for map/level data
+tests/unit_tests/  reserved for unit tests
 ```
 
-## Getting Started
+## Asset policy
 
-### Prerequisites
-
-- **Godot 4.3 or later**: Download from [godotengine.org](https://godotengine.org/)
-
-### Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd Harzog-Zeui-Clone
-   ```
-
-2. **Open in Godot**:
-   - Launch Godot Engine
-   - Click "Import"
-   - Navigate to the project folder
-   - Select `project.godot`
-   - Click "Import & Edit"
-
-3. **Run the game**:
-   - Press F5 in the Godot editor, or
-   - Click the "Play" button in the top-right corner
-
-### Controls (Default - Player 1)
-
-**Keyboard + Mouse**:
-- **W/A/S/D**: Move
-- **Left Mouse**: Attack
-- **Space**: Transform (Humanoid ↔ Plane)
-- **E**: Pickup packaged units (when in plane mode over base)
-- **R**: Deploy units (when in plane mode)
-- **B**: Open build menu
-- **Enter**: Confirm
-- **Escape**: Cancel/Back
-
-**Controller** (Players 2-4):
-- **D-Pad / Left Stick**: Move
-- **Right Stick**: Aim
-- **A Button**: Attack/Confirm
-- **B Button**: Transform/Cancel
-- **X Button**: Pickup
-- **Y Button**: Deploy
-- **Left Shoulder**: Build menu
-
-Controls can be remapped in the Settings menu.
-
-## Development Status
-
-### ✅ Completed
-- Project structure and Godot 4 setup
-- Main menu system
-- Settings menu (video and audio)
-- Match setup screen (player/AI/team configuration)
-- Toroidal world utilities
-- Split-screen system (1-4 players)
-- Input management for multiple players/controllers
-- AI difficulty framework
-- Unit base class and state machine
-- Global manager systems (Game, Input, Audio, Settings, AI)
-
-### 🚧 In Progress
-- Unit implementation (soldiers, tanks, turrets)
-- Transformer hero mechanics
-- Building and production systems
-- AI behavior implementation
-
-### 📋 Planned
-- Pathfinding for ground units
-- Combat and projectile systems
-- Mini-base capture mechanics
-- Visual effects and animations
-- Sound effects and music
-- Unit portraits and UI polish
-- Win/loss screens
-- Replay system
-
-## Game Systems
-
-### Toroidal World
-
-The game world wraps around seamlessly:
-- Moving off the east edge appears on the west edge
-- Moving off the north edge appears on the south edge
-- All distance calculations consider wrap-around
-- Cameras handle wrapping correctly for split-screen
-
-Implementation: `scripts/utils/toroidal_world.gd`
-
-### Split-Screen
-
-Automatically configures viewports based on player count:
-- **1 Player**: Full screen
-- **2 Players**: Horizontal split (left/right)
-- **3-4 Players**: Quad split (2x2 grid)
-
-Implementation: `scripts/game/game_world.gd`
-
-### AI System
-
-AI opponents operate at three difficulty levels with different:
-- Decision-making frequencies
-- Build order adaptability
-- Focus fire and coordination
-- Strategic awareness
-
-Implementation: `scripts/autoloads/ai_manager.gd`
-
-### State Machine
-
-Units use a state-based behavior system:
-- **IDLE**: Awaiting orders
-- **MARCHING_TO_TARGET**: Moving toward objective
-- **ENGAGING_TARGET**: In combat
-- **DEAD**: Unit destroyed
-
-Stances:
-- **HOLD_POSITION**: Stay in place, only attack in range
-- **ADVANCE**: Move toward enemies/objectives
-
-Implementation: `scripts/units/unit_base.gd`
-
-## Contributing
-
-This is a learning/demonstration project. See `CLAUDE.md` for detailed development guidelines and conventions.
-
-### Code Style
-
-- Follow GDScript style guide
-- Use typed GDScript where possible
-- Document classes and functions with comments
-- Use meaningful variable names
-
-### Commit Messages
-
-Follow conventional commits format:
-```
-<type>(<scope>): <subject>
-
-Examples:
-feat(units): add tank unit with anti-ground attacks
-fix(ai): correct target prioritization for air units
-docs(readme): update installation instructions
-```
-
-## License
-
-[To be determined]
-
-## Credits
-
-- Developed with Godot Engine
-- Project created for learning game development and AI systems
-
-## Support
-
-For issues, questions, or suggestions:
-1. Check the `CLAUDE.md` file for detailed documentation
-2. Review existing issues in the repository
-3. Create a new issue with a clear description
-
----
-
-**Current Version**: 0.1.0-alpha
-**Last Updated**: 2025-11-19
+Every asset in this repository must be original or appropriately licensed.
+Do not add art, audio, maps, or text copied or adapted from any existing
+commercial game.
