@@ -33,6 +33,7 @@ func _spawn_commander(spawn_position: Vector3) -> void:
 	commander = COMMANDER_SCENE.instantiate()
 	world_root.add_child(commander)
 	commander.global_position = spawn_position
+	GameState.player_commander = commander
 
 
 func _spawn_base(spawn_position: Vector3, team: int) -> void:

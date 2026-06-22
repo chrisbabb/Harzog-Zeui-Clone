@@ -1,24 +1,26 @@
 extends Node
 ## Autoload singleton providing a global signal bus so unrelated systems
-## (UI, units, buildings, AI) can communicate without direct references.
+## (UI, units, buildings, economy, AI) can communicate without holding
+## direct references to one another.
 
-signal commander_transformed(commander: Node, new_mode: int)
-signal commander_died(commander: Node)
+signal money_changed(team: int, amount: float)
 
-signal unit_spawned(unit: Node)
-signal unit_died(unit: Node)
-signal unit_selected(unit: Node)
-signal unit_deselected(unit: Node)
+signal unit_created(unit: Node)
+signal unit_destroyed(unit: Node)
+signal unit_picked_up(unit: Node)
+signal unit_dropped(unit: Node)
+signal unit_order_changed(unit: Node, order: int)
 
-signal building_constructed(building: Node)
-signal building_destroyed(building: Node)
 signal building_captured(building: Node, new_team: int)
+signal building_damaged(building: Node, amount: float, attacker: Node)
+signal building_destroyed(building: Node)
 
-signal resources_changed(team: int, amount: int)
-signal build_menu_requested
-signal command_menu_requested
+signal commander_mode_changed(mode: int)
+signal commander_fuel_changed(value: float)
+signal commander_ammo_changed(value: float)
 
-signal game_paused
-signal game_resumed
 signal match_started
 signal match_ended(winning_team: int)
+
+signal build_menu_requested
+signal command_menu_requested

@@ -14,7 +14,7 @@ func _ready() -> void:
 
 
 func _on_start_pressed() -> void:
-	GameState.reset()
+	GameState.reset_match_state()
 	Economy.reset()
 	get_tree().change_scene_to_file(GAME_SCENE_PATH)
 

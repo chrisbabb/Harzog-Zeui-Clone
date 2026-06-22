@@ -26,18 +26,18 @@ func _toggle_pause() -> void:
 		_on_resume_pressed()
 	else:
 		visible = true
-		GameState.set_paused(true)
+		get_tree().paused = true
 		resume_button.grab_focus()
 
 
 func _on_resume_pressed() -> void:
 	visible = false
-	GameState.set_paused(false)
+	get_tree().paused = false
 
 
 func _on_main_menu_pressed() -> void:
-	GameState.set_paused(false)
-	GameState.reset()
+	get_tree().paused = false
+	GameState.reset_match_state()
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
 
 

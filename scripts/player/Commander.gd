@@ -30,7 +30,7 @@ func _physics_process(delta: float) -> void:
 	input_direction.z = Input.get_action_strength(Constants.ACTION_MOVE_BACK) - Input.get_action_strength(Constants.ACTION_MOVE_FORWARD)
 	input_direction = input_direction.normalized()
 
-	var speed: float = Constants.COMMANDER_AIR_SPEED if mode == Constants.CommanderMode.AIR else Constants.COMMANDER_GROUND_SPEED
+	var speed: float = Constants.PLAYER_AIR_SPEED if mode == Constants.CommanderMode.AIR else Constants.PLAYER_GROUND_SPEED
 	velocity = input_direction * speed
 	move_and_slide()
 
@@ -48,9 +48,9 @@ func toggle_transform() -> void:
 	if _transform_cooldown_remaining > 0.0:
 		return
 	mode = Constants.CommanderMode.AIR if mode == Constants.CommanderMode.GROUND else Constants.CommanderMode.GROUND
-	_transform_cooldown_remaining = Constants.COMMANDER_TRANSFORM_COOLDOWN
+	_transform_cooldown_remaining = Constants.PLAYER_TRANSFORM_TIME
 	_update_mode_visuals()
-	EventBus.commander_transformed.emit(self, mode)
+	EventBus.commander_mode_changed.emit(mode)
 
 
 func toggle_pickup_drop() -> void:
@@ -70,7 +70,6 @@ func take_damage(amount: float) -> void:
 
 
 func die() -> void:
-	EventBus.commander_died.emit(self)
 	queue_free()
 
 

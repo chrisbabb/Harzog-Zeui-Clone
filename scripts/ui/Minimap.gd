@@ -1,6 +1,6 @@
 extends Control
-## Placeholder minimap. Draws simple dots for registered units/buildings
-## projected from world XZ coordinates onto the minimap rect.
+## Placeholder minimap. Draws simple dots for each team's HQ and captured
+## outposts, projected from world XZ coordinates onto the minimap rect.
 
 @export var world_extent: float = 60.0
 
@@ -30,15 +30,9 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.08, 0.05), true)
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.4, 0.6, 0.4), false, 2.0)
 
-	for unit in GameState.registered_units:
-		if not is_instance_valid(unit):
-			continue
-		_draw_world_dot(unit.global_position, _team_color(unit.get("team")))
-
-	for building in GameState.registered_buildings:
-		if not is_instance_valid(building):
-			continue
-		_draw_world_dot(building.global_position, _team_color(building.get("team")), 5.0)
+	for team in [Constants.Team.PLAYER, Constants.Team.ENEMY]:
+		for building in GameState.get_team_buildings(team):
+			_draw_world_dot(building.global_position, _team_color(team), 5.0)
 
 
 func _draw_world_dot(world_position: Vector3, color: Color, radius: float = 3.0) -> void:
@@ -47,7 +41,7 @@ func _draw_world_dot(world_position: Vector3, color: Color, radius: float = 3.0)
 	draw_circle(point, radius, color)
 
 
-func _team_color(team) -> Color:
+func _team_color(team: int) -> Color:
 	if team == Constants.Team.PLAYER:
 		return Color(0.3, 0.6, 1.0)
 	elif team == Constants.Team.ENEMY:

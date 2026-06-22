@@ -2,7 +2,7 @@ extends StaticBody3D
 ## Placeholder script for a capturable forward outpost.
 ## Outposts can change ownership but do not end the match when destroyed.
 
-@export var max_health: float = Constants.OUTPOST_STARTING_HEALTH
+@export var max_health: float = Constants.OUTPOST_MAX_HP
 @export var team: int = Constants.Team.NEUTRAL
 
 var current_health: float
@@ -10,7 +10,7 @@ var current_health: float
 
 func _ready() -> void:
 	current_health = max_health
-	GameState.register_building(self)
+	GameState.register_outpost(self)
 
 
 func capture(new_team: int) -> void:
@@ -28,5 +28,5 @@ func take_damage(amount: float) -> void:
 
 
 func destroy() -> void:
-	GameState.unregister_building(self)
+	GameState.outposts.erase(self)
 	queue_free()

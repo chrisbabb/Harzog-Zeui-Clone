@@ -7,11 +7,13 @@ signal command_selected(action: int)
 @onready var close_button: Button = $Panel/MarginContainer/ListContainer/CloseButton
 
 var command_labels: Dictionary = {
-	Constants.CommandAction.MOVE: "Move",
-	Constants.CommandAction.ATTACK: "Attack",
-	Constants.CommandAction.HOLD: "Hold Position",
-	Constants.CommandAction.FOLLOW: "Follow",
-	Constants.CommandAction.STOP: "Stop",
+	Constants.UnitOrder.HOLD_POSITION: "Hold Position",
+	Constants.UnitOrder.PATROL_RADIUS: "Patrol",
+	Constants.UnitOrder.ADVANCE_TO_TARGET: "Advance",
+	Constants.UnitOrder.ATTACK_BASE: "Attack Base",
+	Constants.UnitOrder.CAPTURE_OUTPOST: "Capture Outpost",
+	Constants.UnitOrder.DEFEND_OUTPOST: "Defend Outpost",
+	Constants.UnitOrder.SUPPORT_ALLIES: "Support Allies",
 }
 
 
@@ -28,8 +30,6 @@ func _unhandled_input(_event: InputEvent) -> void:
 
 
 func open() -> void:
-	if GameState.selected_unit == null:
-		return
 	visible = true
 
 
@@ -46,5 +46,6 @@ func _populate_options() -> void:
 
 
 func _on_option_pressed(action: int) -> void:
+	GameState.selected_order = action
 	command_selected.emit(action)
 	close()

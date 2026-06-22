@@ -3,40 +3,62 @@ extends Node
 ## No game state lives here — only fixed configuration values.
 
 # Teams
-enum Team { NEUTRAL, PLAYER, ENEMY }
+enum Team { PLAYER, ENEMY, NEUTRAL }
 
 # Commander transform modes
-enum CommanderMode { GROUND, AIR }
+enum CommanderMode { AIR, GROUND }
 
-# Unit categories
-enum UnitClass { INFANTRY, VEHICLE, AIR, TURRET }
+# Buildable/spawnable unit types
+enum UnitType {
+	SCOUT_BUGGY,
+	TANK,
+	MISSILE_CRAWLER,
+	ARTILLERY,
+	ANTI_AIR,
+	SUPPLY_TRUCK,
+	CAPTURE_DRONE,
+	HEAVY_WALKER,
+}
 
-# Build/command menu action types
-enum CommandAction { MOVE, ATTACK, HOLD, FOLLOW, STOP }
+# Orders a unit can be given via the command menu
+enum UnitOrder {
+	HOLD_POSITION,
+	PATROL_RADIUS,
+	ADVANCE_TO_TARGET,
+	ATTACK_BASE,
+	CAPTURE_OUTPOST,
+	DEFEND_OUTPOST,
+	SUPPORT_ALLIES,
+}
 
-# Camera
-const CAMERA_DEFAULT_SIZE: float = 20.0
-const CAMERA_MIN_SIZE: float = 8.0
-const CAMERA_MAX_SIZE: float = 40.0
-const CAMERA_ANGLE_DEGREES: float = -45.0
+# Building categories
+enum BuildingType { HQ, OUTPOST }
 
-# Commander movement
-const COMMANDER_GROUND_SPEED: float = 6.0
-const COMMANDER_AIR_SPEED: float = 12.0
-const COMMANDER_TRANSFORM_COOLDOWN: float = 0.75
+# Economy
+const STARTING_MONEY: int = 800
+const BASE_INCOME_PER_SECOND: int = 8
+const OUTPOST_INCOME_PER_SECOND: int = 4
 
-# Generic unit movement
+# Player commander stats
+const MAX_PLAYER_FUEL: float = 100.0
+const MAX_PLAYER_AMMO: float = 80.0
+const PLAYER_AIR_SPEED: float = 22.0
+const PLAYER_GROUND_SPEED: float = 11.0
+const PLAYER_TRANSFORM_TIME: float = 0.45
+
+# Pickup / capture ranges and timings
+const PICKUP_RANGE: float = 4.5
+const DROP_RANGE: float = 5.0
+const CAPTURE_RADIUS: float = 6.0
+const OUTPOST_CAPTURE_TIME: float = 6.0
+
+# Building health
+const HQ_MAX_HP: float = 3000.0
+const OUTPOST_MAX_HP: float = 1000.0
+
+# Generic ground-unit movement defaults, for unit types without a tuned speed yet
 const UNIT_DEFAULT_SPEED: float = 4.0
 const UNIT_NAVIGATION_ARRIVAL_DISTANCE: float = 0.5
-
-# Economy defaults
-const STARTING_RESOURCES: int = 200
-const RESOURCE_TICK_INTERVAL: float = 1.0
-const RESOURCE_TICK_AMOUNT: int = 5
-
-# Buildings
-const BASE_STARTING_HEALTH: float = 1000.0
-const OUTPOST_STARTING_HEALTH: float = 400.0
 
 # Input action names (kept in one place to avoid typos at call sites)
 const ACTION_MOVE_FORWARD: String = "move_forward"

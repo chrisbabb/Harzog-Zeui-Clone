@@ -5,10 +5,10 @@ extends CharacterBody3D
 @export var max_health: float = 100.0
 @export var move_speed: float = Constants.UNIT_DEFAULT_SPEED
 @export var team: int = Constants.Team.PLAYER
-@export var unit_class: int = Constants.UnitClass.INFANTRY
+@export var unit_type: int = Constants.UnitType.TANK
 
 var current_health: float
-var current_order: int = Constants.CommandAction.HOLD
+var current_order: int = Constants.UnitOrder.HOLD_POSITION
 
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
 
@@ -17,7 +17,7 @@ func _ready() -> void:
 	current_health = max_health
 	nav_agent.path_desired_distance = 0.5
 	nav_agent.target_desired_distance = Constants.UNIT_NAVIGATION_ARRIVAL_DISTANCE
-	GameState.register_unit(self)
+	EventBus.unit_created.emit(self)
 
 
 func _physics_process(_delta: float) -> void:
@@ -35,13 +35,15 @@ func _physics_process(_delta: float) -> void:
 
 
 func move_to(destination: Vector3) -> void:
-	current_order = Constants.CommandAction.MOVE
+	current_order = Constants.UnitOrder.ADVANCE_TO_TARGET
 	nav_agent.target_position = destination
+	EventBus.unit_order_changed.emit(self, current_order)
 
 
 func stop() -> void:
-	current_order = Constants.CommandAction.STOP
+	current_order = Constants.UnitOrder.HOLD_POSITION
 	nav_agent.target_position = global_position
+	EventBus.unit_order_changed.emit(self, current_order)
 
 
 func take_damage(amount: float) -> void:
@@ -51,5 +53,5 @@ func take_damage(amount: float) -> void:
 
 
 func die() -> void:
-	GameState.unregister_unit(self)
+	EventBus.unit_destroyed.emit(self)
 	queue_free()

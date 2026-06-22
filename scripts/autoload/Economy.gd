@@ -1,47 +1,57 @@
 extends Node
-## Autoload singleton managing per-team resources and income ticks.
+## Autoload singleton tracking each team's money and passive income.
+## Income is continuous (per-second rates applied every frame) rather than
+## ticked, so callers always read a smoothly increasing value.
 
-var _team_resources: Dictionary = {}
-var _tick_accumulator: float = 0.0
-
-
-func _ready() -> void:
-	_team_resources[Constants.Team.PLAYER] = Constants.STARTING_RESOURCES
-	_team_resources[Constants.Team.ENEMY] = Constants.STARTING_RESOURCES
+var player_money: float = Constants.STARTING_MONEY
+var enemy_money: float = Constants.STARTING_MONEY
 
 
 func _process(delta: float) -> void:
-	if GameState.is_paused or not GameState.is_match_active:
+	if not GameState.match_active:
 		return
-	_tick_accumulator += delta
-	if _tick_accumulator >= Constants.RESOURCE_TICK_INTERVAL:
-		_tick_accumulator = 0.0
-		for team in _team_resources.keys():
-			add_resources(team, Constants.RESOURCE_TICK_AMOUNT)
-
-
-func get_resources(team: int) -> int:
-	return _team_resources.get(team, 0)
-
-
-func add_resources(team: int, amount: int) -> void:
-	_team_resources[team] = get_resources(team) + amount
-	EventBus.resources_changed.emit(team, _team_resources[team])
-
-
-func can_afford(team: int, cost: int) -> bool:
-	return get_resources(team) >= cost
-
-
-func spend_resources(team: int, cost: int) -> bool:
-	if not can_afford(team, cost):
-		return false
-	_team_resources[team] = get_resources(team) - cost
-	EventBus.resources_changed.emit(team, _team_resources[team])
-	return true
+	process_income(delta)
 
 
 func reset() -> void:
-	_tick_accumulator = 0.0
-	_team_resources[Constants.Team.PLAYER] = Constants.STARTING_RESOURCES
-	_team_resources[Constants.Team.ENEMY] = Constants.STARTING_RESOURCES
+	player_money = Constants.STARTING_MONEY
+	enemy_money = Constants.STARTING_MONEY
+
+
+func get_money(team: int) -> float:
+	return player_money if team == Constants.Team.PLAYER else enemy_money
+
+
+func can_afford(team: int, amount: float) -> bool:
+	return get_money(team) >= amount
+
+
+func spend(team: int, amount: float) -> bool:
+	if not can_afford(team, amount):
+		return false
+	_apply_delta(team, -amount)
+	return true
+
+
+func add_money(team: int, amount: float) -> void:
+	_apply_delta(team, amount)
+
+
+func process_income(delta: float) -> void:
+	for team in [Constants.Team.PLAYER, Constants.Team.ENEMY]:
+		var hq: Node = GameState.player_hq if team == Constants.Team.PLAYER else GameState.enemy_hq
+		if hq == null or not is_instance_valid(hq):
+			continue
+		var income: float = Constants.BASE_INCOME_PER_SECOND
+		for outpost in GameState.outposts:
+			if is_instance_valid(outpost) and outpost.get("team") == team:
+				income += Constants.OUTPOST_INCOME_PER_SECOND
+		_apply_delta(team, income * delta)
+
+
+func _apply_delta(team: int, amount: float) -> void:
+	if team == Constants.Team.PLAYER:
+		player_money += amount
+	else:
+		enemy_money += amount
+	EventBus.money_changed.emit(team, get_money(team))

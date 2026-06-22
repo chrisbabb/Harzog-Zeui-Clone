@@ -1,71 +1,76 @@
 extends Node
-## Autoload singleton tracking the current state of an in-progress match.
+## Autoload singleton tracking the live state of an in-progress match: the
+## match clock, the registered HQs/outposts, the commander references, and
+## whatever unit type/order is currently selected in the build/command UI.
 
-var is_paused: bool = false
-var is_match_active: bool = false
-var player_team: int = Constants.Team.PLAYER
+var match_active: bool = false
+var elapsed_time: float = 0.0
 
-var registered_units: Array[Node] = []
-var registered_buildings: Array[Node] = []
+var player_hq: Node = null
+var enemy_hq: Node = null
+var outposts: Array[Node] = []
 
-var selected_unit: Node = null
+var player_commander: Node = null
+var enemy_commander: Node = null
+
+var selected_unit_type: int = Constants.UnitType.SCOUT_BUGGY
+var selected_order: int = Constants.UnitOrder.HOLD_POSITION
+
+var winner: int = -1
+
+
+func _process(delta: float) -> void:
+	if match_active:
+		elapsed_time += delta
 
 
 func start_match() -> void:
-	is_match_active = true
-	is_paused = false
+	match_active = true
+	winner = -1
 	EventBus.match_started.emit()
 
 
 func end_match(winning_team: int) -> void:
-	is_match_active = false
+	match_active = false
+	winner = winning_team
 	EventBus.match_ended.emit(winning_team)
 
 
-func set_paused(paused: bool) -> void:
-	is_paused = paused
-	get_tree().paused = paused
-	if paused:
-		EventBus.game_paused.emit()
+func register_outpost(outpost: Node) -> void:
+	if outpost not in outposts:
+		outposts.append(outpost)
+
+
+func register_hq(base: Node) -> void:
+	if base.get("team") == Constants.Team.PLAYER:
+		player_hq = base
 	else:
-		EventBus.game_resumed.emit()
+		enemy_hq = base
 
 
-func register_unit(unit: Node) -> void:
-	if unit not in registered_units:
-		registered_units.append(unit)
-		EventBus.unit_spawned.emit(unit)
+func get_team_buildings(team: int) -> Array[Node]:
+	var buildings: Array[Node] = []
+	var hq: Node = player_hq if team == Constants.Team.PLAYER else enemy_hq
+	if hq != null and is_instance_valid(hq):
+		buildings.append(hq)
+	for outpost in outposts:
+		if is_instance_valid(outpost) and outpost.get("team") == team:
+			buildings.append(outpost)
+	return buildings
 
 
-func unregister_unit(unit: Node) -> void:
-	registered_units.erase(unit)
-	EventBus.unit_died.emit(unit)
+func get_enemy_team(team: int) -> int:
+	return Constants.Team.ENEMY if team == Constants.Team.PLAYER else Constants.Team.PLAYER
 
 
-func register_building(building: Node) -> void:
-	if building not in registered_buildings:
-		registered_buildings.append(building)
-		EventBus.building_constructed.emit(building)
-
-
-func unregister_building(building: Node) -> void:
-	registered_buildings.erase(building)
-	EventBus.building_destroyed.emit(building)
-
-
-func set_selected_unit(unit: Node) -> void:
-	if selected_unit == unit:
-		return
-	if selected_unit != null:
-		EventBus.unit_deselected.emit(selected_unit)
-	selected_unit = unit
-	if selected_unit != null:
-		EventBus.unit_selected.emit(selected_unit)
-
-
-func reset() -> void:
-	is_paused = false
-	is_match_active = false
-	registered_units.clear()
-	registered_buildings.clear()
-	selected_unit = null
+func reset_match_state() -> void:
+	match_active = false
+	elapsed_time = 0.0
+	player_hq = null
+	enemy_hq = null
+	outposts.clear()
+	player_commander = null
+	enemy_commander = null
+	selected_unit_type = Constants.UnitType.SCOUT_BUGGY
+	selected_order = Constants.UnitOrder.HOLD_POSITION
+	winner = -1

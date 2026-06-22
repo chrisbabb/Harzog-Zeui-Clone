@@ -7,10 +7,10 @@ extends CanvasLayer
 
 
 func _ready() -> void:
-	EventBus.resources_changed.connect(_on_resources_changed)
+	EventBus.money_changed.connect(_on_money_changed)
 	build_menu_button.pressed.connect(_on_build_menu_button_pressed)
 	command_menu_button.pressed.connect(_on_command_menu_button_pressed)
-	_on_resources_changed(GameState.player_team, Economy.get_resources(GameState.player_team))
+	_on_money_changed(Constants.Team.PLAYER, Economy.get_money(Constants.Team.PLAYER))
 
 
 func _unhandled_input(_event: InputEvent) -> void:
@@ -20,9 +20,9 @@ func _unhandled_input(_event: InputEvent) -> void:
 		EventBus.command_menu_requested.emit()
 
 
-func _on_resources_changed(team: int, amount: int) -> void:
-	if team == GameState.player_team:
-		resource_label.text = "Resources: %d" % amount
+func _on_money_changed(team: int, amount: float) -> void:
+	if team == Constants.Team.PLAYER:
+		resource_label.text = "Money: %d" % int(amount)
 
 
 func _on_build_menu_button_pressed() -> void:
