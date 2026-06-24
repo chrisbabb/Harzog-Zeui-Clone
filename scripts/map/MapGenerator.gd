@@ -44,8 +44,7 @@ static func generate_battlefield(game_root: Node3D) -> void:
 
 static func create_hq(team: int, position: Vector3) -> Node3D:
 	var hq: Node3D = HQ_SCENE.instantiate()
-	hq.team = team
-	hq.position = position
+	hq.setup(team, position)
 	return hq
 
 

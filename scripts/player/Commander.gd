@@ -19,22 +19,14 @@ const ACCELERATION: float = 40.0
 const DECELERATION: float = 25.0
 const ROTATION_SPEED: float = 10.0
 
-# Fuel drain/refuel (per second)
+# Fuel drain (per second)
 const FUEL_DRAIN_AIR: float = 8.0
 const FUEL_DRAIN_GROUND: float = 2.0
-const REFUEL_RATE: float = 25.0
 
-# Ammo cost/reload
+# Ammo cost/cooldown
 const AMMO_FIRE_COST: float = 5.0
-const RELOAD_RATE: float = 8.0
 const FIRE_COOLDOWN: float = 0.35
 const AIR_FIRE_SPREAD_DEGREES: float = 6.0
-
-# Supply range shared by refuel/reload checks against friendly HQ/outposts
-const SUPPLY_RANGE: float = 8.0
-
-# The commander captures outposts slower than a dedicated capture unit would
-const CAPTURE_SLOWDOWN: float = 1.5
 
 # Transform animation
 const SQUASH_SCALE: Vector3 = Vector3(1.3, 0.7, 1.3)
@@ -52,8 +44,6 @@ var carried_unit: Node = null
 
 var _transform_locked_remaining: float = 0.0
 var _fire_cooldown_remaining: float = 0.0
-var _capturing_outpost: Node = null
-var _capture_progress: float = 0.0
 
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var ground_mesh: MeshInstance3D = $MeshRoot/GroundMesh
@@ -85,8 +75,6 @@ func _physics_process(delta: float) -> void:
 	_update_fuel(delta, input_direction != Vector3.ZERO)
 	_handle_movement(delta, input_direction)
 	_update_height(delta)
-	_update_ammo(delta)
-	_update_capture(delta)
 
 	if carried_unit != null:
 		carried_unit.global_position = global_position
@@ -153,9 +141,7 @@ func _update_height(delta: float) -> void:
 
 func _update_fuel(delta: float, is_moving: bool) -> void:
 	var previous_fuel: float = fuel
-	if _is_near_friendly_supply():
-		fuel = min(Constants.MAX_PLAYER_FUEL, fuel + REFUEL_RATE * delta)
-	elif is_moving:
+	if is_moving:
 		var drain_rate: float = FUEL_DRAIN_AIR if mode == Constants.CommanderMode.AIR else FUEL_DRAIN_GROUND
 		fuel = max(0.0, fuel - drain_rate * delta)
 
@@ -164,20 +150,6 @@ func _update_fuel(delta: float, is_moving: bool) -> void:
 
 	if fuel <= 0.0 and mode == Constants.CommanderMode.AIR:
 		_begin_transform(Constants.CommanderMode.GROUND)
-
-
-func _update_ammo(delta: float) -> void:
-	if ammo >= Constants.MAX_PLAYER_AMMO or not _is_near_friendly_supply():
-		return
-	ammo = min(Constants.MAX_PLAYER_AMMO, ammo + RELOAD_RATE * delta)
-	EventBus.commander_ammo_changed.emit(ammo)
-
-
-func _is_near_friendly_supply() -> bool:
-	for building in GameState.get_team_buildings(team):
-		if global_position.distance_to(building.global_position) <= SUPPLY_RANGE:
-			return true
-	return false
 
 
 func _toggle_transform() -> void:
@@ -219,36 +191,6 @@ func _apply_team_color() -> void:
 	material.albedo_color = Constants.team_color(team)
 	ground_mesh.material_override = material
 	air_mesh.material_override = material
-
-
-func _update_capture(delta: float) -> void:
-	if mode != Constants.CommanderMode.GROUND:
-		_capturing_outpost = null
-		_capture_progress = 0.0
-		return
-
-	var target: Node = _find_capturable_outpost()
-	if target != _capturing_outpost:
-		_capturing_outpost = target
-		_capture_progress = 0.0
-
-	if _capturing_outpost == null:
-		return
-
-	_capture_progress += delta
-	if _capture_progress >= Constants.OUTPOST_CAPTURE_TIME * CAPTURE_SLOWDOWN:
-		_capturing_outpost.capture(team)
-		_capturing_outpost = null
-		_capture_progress = 0.0
-
-
-func _find_capturable_outpost() -> Node:
-	for outpost in GameState.outposts:
-		if not is_instance_valid(outpost) or outpost.get("team") == team:
-			continue
-		if global_position.distance_to(outpost.global_position) <= Constants.CAPTURE_RADIUS:
-			return outpost
-	return null
 
 
 func _toggle_pickup_drop() -> void:
