@@ -11,12 +11,14 @@ var current_health: float
 var current_order: int = Constants.UnitOrder.HOLD_POSITION
 
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
+@onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
 
 func _ready() -> void:
 	current_health = max_health
 	nav_agent.path_desired_distance = 0.5
 	nav_agent.target_desired_distance = Constants.UNIT_NAVIGATION_ARRIVAL_DISTANCE
+	add_to_group("units")
 	EventBus.unit_created.emit(self)
 
 
@@ -44,6 +46,14 @@ func stop() -> void:
 	current_order = Constants.UnitOrder.HOLD_POSITION
 	nav_agent.target_position = global_position
 	EventBus.unit_order_changed.emit(self, current_order)
+
+
+func set_carried(carried: bool) -> void:
+	# Disabling physics_process freezes movement in place; re-enabling it
+	# naturally resumes whatever order/nav target was already set.
+	visible = not carried
+	collision_shape.disabled = carried
+	set_physics_process(not carried)
 
 
 func take_damage(amount: float) -> void:

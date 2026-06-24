@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/Commander.gd" id="1"]
 
@@ -6,12 +6,16 @@
 radius = 0.5
 height = 2.0
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_cmd1"]
-radius = 0.5
-height = 2.0
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cmd1"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cmd1"]
+material = SubResource("StandardMaterial3D_cmd1")
+size = Vector3(1.4, 1.2, 1.8)
 
 [sub_resource type="PrismMesh" id="PrismMesh_cmd1"]
-size = Vector3(1.6, 0.5, 2.4)
+material = SubResource("StandardMaterial3D_cmd1")
+size = Vector3(1.6, 0.6, 2.6)
 
 [node name="Commander" type="CharacterBody3D"]
 script = ExtResource("1")
@@ -19,10 +23,11 @@ script = ExtResource("1")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("CapsuleShape3D_cmd1")
 
-[node name="GroundMesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("CapsuleMesh_cmd1")
+[node name="MeshRoot" type="Node3D" parent="."]
 
-[node name="AirMesh" type="MeshInstance3D" parent="."]
+[node name="GroundMesh" type="MeshInstance3D" parent="MeshRoot"]
+mesh = SubResource("BoxMesh_cmd1")
+
+[node name="AirMesh" type="MeshInstance3D" parent="MeshRoot"]
 visible = false
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
 mesh = SubResource("PrismMesh_cmd1")
