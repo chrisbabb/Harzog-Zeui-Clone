@@ -1,0 +1,62 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/units/Unit.gd" id="1"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aa"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_aa_body"]
+material = SubResource("StandardMaterial3D_aa")
+size = Vector3(1.8, 0.6, 2.6)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_aa_turretbase"]
+material = SubResource("StandardMaterial3D_aa")
+top_radius = 0.5
+bottom_radius = 0.5
+height = 0.4
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_aa_barrel"]
+material = SubResource("StandardMaterial3D_aa")
+top_radius = 0.1
+bottom_radius = 0.1
+height = 1.4
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_aa_collision"]
+size = Vector3(1.8, 1.6, 2.6)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_aa_detection"]
+radius = 10.0
+
+[node name="AntiAir" type="CharacterBody3D"]
+script = ExtResource("1")
+unit_type = 4
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("BoxMesh_aa_body")
+
+[node name="TurretBase" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+mesh = SubResource("CylinderMesh_aa_turretbase")
+
+[node name="BarrelLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, -0.25, 1.1, 0.9)
+mesh = SubResource("CylinderMesh_aa_barrel")
+
+[node name="BarrelRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0.25, 1.1, 0.9)
+mesh = SubResource("CylinderMesh_aa_barrel")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("BoxShape3D_aa_collision")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+
+[node name="DetectionArea" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("SphereShape3D_aa_detection")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 1.6)

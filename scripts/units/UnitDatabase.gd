@@ -4,9 +4,24 @@ extends RefCounted
 ## The file is parsed once and cached for the rest of the process.
 
 const DATA_PATH: String = "res://data/units.json"
-const UNIT_SCENE: PackedScene = preload("res://scenes/units/Unit.tscn")
+const FALLBACK_SCENE: PackedScene = preload("res://scenes/units/Unit.tscn")
+
+const SCENE_BY_TYPE: Dictionary = {
+	Constants.UnitType.SCOUT_BUGGY: preload("res://scenes/units/ScoutBuggy.tscn"),
+	Constants.UnitType.TANK: preload("res://scenes/units/Tank.tscn"),
+	Constants.UnitType.MISSILE_CRAWLER: preload("res://scenes/units/MissileCrawler.tscn"),
+	Constants.UnitType.ARTILLERY: preload("res://scenes/units/Artillery.tscn"),
+	Constants.UnitType.ANTI_AIR: preload("res://scenes/units/AntiAir.tscn"),
+	Constants.UnitType.SUPPLY_TRUCK: preload("res://scenes/units/SupplyTruck.tscn"),
+	Constants.UnitType.CAPTURE_DRONE: preload("res://scenes/units/CaptureDrone.tscn"),
+	Constants.UnitType.HEAVY_WALKER: preload("res://scenes/units/HeavyWalker.tscn"),
+}
 
 static var _data: Dictionary = {}
+
+
+static func get_unit_scene(unit_type: int) -> PackedScene:
+	return SCENE_BY_TYPE.get(unit_type, FALLBACK_SCENE)
 
 
 ## Raw stat dictionary for unit_type (cost, hp, speed, fuel, ammo,
@@ -25,7 +40,7 @@ static func get_cost(unit_type: int) -> float:
 ## Instantiates and positions a unit; the caller is responsible for adding
 ## it to the scene tree, mirroring MapGenerator's create_hq/create_outpost.
 static func create_unit(unit_type: int, team: int, position: Vector3) -> Node3D:
-	var unit: Node3D = UNIT_SCENE.instantiate() as Node3D
+	var unit: Node3D = get_unit_scene(unit_type).instantiate() as Node3D
 	unit.set("unit_type", unit_type)
 	unit.set("team", team)
 	unit.position = position

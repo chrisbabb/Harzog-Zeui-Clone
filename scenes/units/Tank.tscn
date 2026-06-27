@@ -1,0 +1,58 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/units/Unit.gd" id="1"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tank"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tank_body"]
+material = SubResource("StandardMaterial3D_tank")
+size = Vector3(2.0, 0.7, 3.2)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_tank_turret"]
+material = SubResource("StandardMaterial3D_tank")
+top_radius = 0.6
+bottom_radius = 0.6
+height = 0.5
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_tank_barrel"]
+material = SubResource("StandardMaterial3D_tank")
+top_radius = 0.12
+bottom_radius = 0.12
+height = 1.6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tank_collision"]
+size = Vector3(2.0, 1.6, 3.2)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_tank_detection"]
+radius = 10.0
+
+[node name="Tank" type="CharacterBody3D"]
+script = ExtResource("1")
+unit_type = 1
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("BoxMesh_tank_body")
+
+[node name="Turret" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0)
+mesh = SubResource("CylinderMesh_tank_turret")
+
+[node name="Barrel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 1.35, 1.4)
+mesh = SubResource("CylinderMesh_tank_barrel")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("BoxShape3D_tank_collision")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+
+[node name="DetectionArea" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("SphereShape3D_tank_detection")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 2.2)

@@ -1,0 +1,48 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/units/Unit.gd" id="1"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_art"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_art_body"]
+material = SubResource("StandardMaterial3D_art")
+size = Vector3(1.8, 0.6, 2.4)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_art_barrel"]
+material = SubResource("StandardMaterial3D_art")
+top_radius = 0.18
+bottom_radius = 0.18
+height = 3.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_art_collision"]
+size = Vector3(1.8, 1.2, 2.4)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_art_detection"]
+radius = 10.0
+
+[node name="Artillery" type="CharacterBody3D"]
+script = ExtResource("1")
+unit_type = 3
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("BoxMesh_art_body")
+
+[node name="Barrel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.9, 1.5)
+mesh = SubResource("CylinderMesh_art_barrel")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("BoxShape3D_art_collision")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+
+[node name="DetectionArea" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("SphereShape3D_art_detection")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 3.0)

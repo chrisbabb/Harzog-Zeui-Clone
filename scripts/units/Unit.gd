@@ -43,7 +43,6 @@ var _nearby_bodies: Array[Node] = []
 var _was_navigation_finished: bool = true
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
-@onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var detection_area: Area3D = $DetectionArea
 @onready var detection_shape: CollisionShape3D = $DetectionArea/CollisionShape3D
@@ -238,10 +237,14 @@ func _refresh_order_target() -> void:
 	navigation_agent.target_position = UnitOrder.resolve_movement_target(self)
 
 
+## Unit scenes vary in how many visual parts they have (hull, turret,
+## wheels, ...), so every MeshInstance3D in the scene is tinted rather than
+## assuming a single fixed mesh node.
 func _apply_team_color() -> void:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Constants.team_color(team)
-	mesh_instance.material_override = material
+	for mesh in find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).material_override = material
 
 
 func _apply_detection_radius() -> void:

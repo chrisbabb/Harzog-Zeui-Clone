@@ -1,0 +1,55 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/units/Unit.gd" id="1"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cd"]
+albedo_color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_cd_body"]
+material = SubResource("StandardMaterial3D_cd")
+radius = 0.45
+height = 0.9
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_cd_antenna"]
+material = SubResource("StandardMaterial3D_cd")
+top_radius = 0.04
+bottom_radius = 0.04
+height = 0.5
+
+[sub_resource type="SphereMesh" id="SphereMesh_cd_tip"]
+material = SubResource("StandardMaterial3D_cd")
+radius = 0.08
+height = 0.16
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_cd_collision"]
+radius = 0.5
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_cd_detection"]
+radius = 10.0
+
+[node name="CaptureDrone" type="CharacterBody3D"]
+script = ExtResource("1")
+unit_type = 6
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("SphereMesh_cd_body")
+
+[node name="Antenna" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+mesh = SubResource("CylinderMesh_cd_antenna")
+
+[node name="AntennaTip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.53, 0)
+mesh = SubResource("SphereMesh_cd_tip")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("SphereShape3D_cd_collision")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+
+[node name="DetectionArea" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("SphereShape3D_cd_detection")

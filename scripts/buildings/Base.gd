@@ -3,8 +3,6 @@ extends StaticBody3D
 ## match. Provides full-strength resupply to nearby friendly commander/units
 ## and can queue freshly purchased units for delivery at its spawn point.
 
-const UNIT_SCENE: PackedScene = preload("res://scenes/units/Unit.tscn")
-
 const REPAIR_RATE: float = 40.0
 const REFUEL_RATE: float = 25.0
 const RELOAD_RATE: float = 8.0
@@ -76,7 +74,7 @@ func deliver_next_unit() -> Node:
 		return null
 
 	var entry: Dictionary = unit_delivery_queue.pop_front()
-	var unit: Node3D = UNIT_SCENE.instantiate() as Node3D
+	var unit: Node3D = UnitDatabase.get_unit_scene(entry["unit_type"]).instantiate() as Node3D
 	unit.set("team", team)
 	unit.set("unit_type", entry["unit_type"])
 	unit.set("current_order", entry["order"])
