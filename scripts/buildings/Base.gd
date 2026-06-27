@@ -119,15 +119,9 @@ func _update_supply(delta: float) -> void:
 
 
 func _heal(target: Node, amount: float) -> void:
-	var hp_value: Variant = target.get("hp")
-	if hp_value != null:
-		var max_value: float = target.get("max_hp")
-		target.set("hp", min(max_value, hp_value + amount))
-		return
-	var health_value: Variant = target.get("current_health")
-	if health_value != null:
-		var max_health_value: float = target.get("max_health")
-		target.set("current_health", min(max_health_value, health_value + amount))
+	var hp_value: float = target.get("hp")
+	var max_value: float = target.get("max_hp")
+	target.set("hp", min(max_value, hp_value + amount))
 
 
 func _destroy() -> void:
