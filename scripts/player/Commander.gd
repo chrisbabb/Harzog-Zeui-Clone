@@ -87,6 +87,10 @@ func take_damage(amount: float) -> void:
 
 
 func die() -> void:
+	if team == Constants.Team.PLAYER:
+		GameState.player_commander = null
+	else:
+		GameState.enemy_commander = null
 	queue_free()
 
 

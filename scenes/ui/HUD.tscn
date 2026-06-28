@@ -30,6 +30,20 @@ text = "Build (B)"
 [node name="CommandMenuButton" type="Button" parent="Root/TopBar"]
 text = "Commands (C)"
 
+[node name="StatusBar" type="VBoxContainer" parent="Root"]
+offset_left = 16.0
+offset_top = 64.0
+offset_right = 560.0
+offset_bottom = 120.0
+theme_override_constants/separation = 4
+
+[node name="FeedbackLabel" type="Label" parent="Root/StatusBar"]
+text = ""
+
+[node name="QueueLabel" type="Label" parent="Root/StatusBar"]
+visible = false
+text = ""
+
 [node name="Minimap" parent="." instance=ExtResource("2")]
 anchor_left = 1.0
 anchor_top = 1.0

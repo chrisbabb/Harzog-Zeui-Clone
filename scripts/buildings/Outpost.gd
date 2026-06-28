@@ -6,16 +6,29 @@ extends StaticBody3D
 const REPAIR_RATE: float = 20.0
 const REFUEL_RATE: float = 12.0
 const RELOAD_RATE: float = 4.0
+const DELIVERY_DELAY: float = 2.5
+
+## Outposts can only produce lighter/support units, unlike the HQ which builds everything.
+const BUILDABLE_UNIT_TYPES: Array[int] = [
+	Constants.UnitType.SCOUT_BUGGY,
+	Constants.UnitType.TANK,
+	Constants.UnitType.MISSILE_CRAWLER,
+	Constants.UnitType.SUPPLY_TRUCK,
+	Constants.UnitType.CAPTURE_DRONE,
+]
 
 @export var team: int = Constants.Team.NEUTRAL
 @export var max_hp: float = Constants.OUTPOST_MAX_HP
 @export var refuel_radius: float = 10.0
 @export var repair_radius: float = 8.0
+@export var production_radius: float = 10.0
 
 var hp: float
 var capture_progress_player: float = 0.0
 var capture_progress_enemy: float = 0.0
 var capture_radius: float = Constants.CAPTURE_RADIUS
+var unit_delivery_queue: Array = []
+var _delivery_timer: float = 0.0
 
 @onready var tower_mesh: MeshInstance3D = $TowerMesh
 @onready var ring_mesh: MeshInstance3D = $RingMesh
@@ -40,6 +53,7 @@ func _physics_process(delta: float) -> void:
 	_update_capture(delta)
 	_update_progress_bar()
 	_update_supply(delta)
+	_update_delivery(delta)
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
@@ -76,6 +90,43 @@ func update_team_material() -> void:
 	material.albedo_color = Constants.team_color(team)
 	tower_mesh.material_override = material
 	ring_mesh.material_override = material
+
+
+func can_produce(unit_type: int) -> bool:
+	return unit_type in BUILDABLE_UNIT_TYPES
+
+
+func get_queue_size() -> int:
+	return unit_delivery_queue.size()
+
+
+func get_spawn_position() -> Vector3:
+	return unit_spawn_point.global_position
+
+
+func enqueue_unit(unit_type: int, order: int) -> void:
+	if unit_delivery_queue.is_empty():
+		_delivery_timer = DELIVERY_DELAY
+	unit_delivery_queue.append({"unit_type": unit_type, "order": order})
+
+
+func deliver_next_unit() -> Node:
+	if unit_delivery_queue.is_empty():
+		return null
+
+	var entry: Dictionary = unit_delivery_queue.pop_front()
+	var unit: Node3D = UnitDatabase.get_unit_scene(entry["unit_type"]).instantiate() as Node3D
+	unit.set("team", team)
+	unit.set("unit_type", entry["unit_type"])
+	unit.set("current_order", entry["order"])
+
+	var units_root: Node = get_parent().get_parent().get_node_or_null("UnitsRoot")
+	if units_root == null:
+		units_root = get_parent()
+	units_root.add_child(unit)
+	unit.global_position = get_spawn_position()
+
+	return unit
 
 
 func _update_capture(delta: float) -> void:
@@ -148,6 +199,17 @@ func _apply_capture_radius() -> void:
 	var shape: CylinderShape3D = capture_zone_shape.shape.duplicate() as CylinderShape3D
 	shape.radius = capture_radius
 	capture_zone_shape.shape = shape
+
+
+func _update_delivery(delta: float) -> void:
+	if unit_delivery_queue.is_empty():
+		return
+
+	_delivery_timer -= delta
+	if _delivery_timer <= 0.0:
+		deliver_next_unit()
+		if not unit_delivery_queue.is_empty():
+			_delivery_timer = DELIVERY_DELAY
 
 
 func _destroy() -> void:

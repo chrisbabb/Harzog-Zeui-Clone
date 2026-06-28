@@ -6,15 +6,7 @@ signal command_selected(action: int)
 @onready var options_container: VBoxContainer = $Panel/MarginContainer/ListContainer/OptionsContainer
 @onready var close_button: Button = $Panel/MarginContainer/ListContainer/CloseButton
 
-var command_labels: Dictionary = {
-	Constants.UnitOrder.HOLD_POSITION: "Hold Position",
-	Constants.UnitOrder.PATROL_RADIUS: "Patrol",
-	Constants.UnitOrder.ADVANCE_TO_TARGET: "Advance",
-	Constants.UnitOrder.ATTACK_BASE: "Attack Base",
-	Constants.UnitOrder.CAPTURE_OUTPOST: "Capture Outpost",
-	Constants.UnitOrder.DEFEND_OUTPOST: "Defend Outpost",
-	Constants.UnitOrder.SUPPORT_ALLIES: "Support Allies",
-}
+var command_labels: Dictionary = Constants.UNIT_ORDER_NAMES
 
 
 func _ready() -> void:

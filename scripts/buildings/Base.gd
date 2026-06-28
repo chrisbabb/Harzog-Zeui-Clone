@@ -6,15 +6,18 @@ extends StaticBody3D
 const REPAIR_RATE: float = 40.0
 const REFUEL_RATE: float = 25.0
 const RELOAD_RATE: float = 8.0
+const DELIVERY_DELAY: float = 1.5
 
 @export var team: int = Constants.Team.PLAYER
 @export var max_hp: float = Constants.HQ_MAX_HP
 @export var refuel_radius: float = 14.0
 @export var repair_radius: float = 12.0
+@export var production_radius: float = 14.0
 
 var building_type: int = Constants.BuildingType.HQ
 var hp: float
 var unit_delivery_queue: Array = []
+var _delivery_timer: float = 0.0
 
 @onready var body_mesh: MeshInstance3D = $BodyMesh
 @onready var tower_mesh: MeshInstance3D = $TowerMesh
@@ -29,6 +32,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_supply(delta)
+	_update_delivery(delta)
 
 
 func setup(new_team: int, new_position: Vector3) -> void:
@@ -65,7 +69,17 @@ func reload_commander(commander: Node, delta: float) -> void:
 	EventBus.commander_ammo_changed.emit(new_ammo)
 
 
+func can_produce(_unit_type: int) -> bool:
+	return true
+
+
+func get_queue_size() -> int:
+	return unit_delivery_queue.size()
+
+
 func enqueue_unit(unit_type: int, order: int) -> void:
+	if unit_delivery_queue.is_empty():
+		_delivery_timer = DELIVERY_DELAY
 	unit_delivery_queue.append({"unit_type": unit_type, "order": order})
 
 
@@ -90,6 +104,17 @@ func deliver_next_unit() -> Node:
 
 func get_spawn_position() -> Vector3:
 	return spawn_point.global_position
+
+
+func _update_delivery(delta: float) -> void:
+	if unit_delivery_queue.is_empty():
+		return
+
+	_delivery_timer -= delta
+	if _delivery_timer <= 0.0:
+		deliver_next_unit()
+		if not unit_delivery_queue.is_empty():
+			_delivery_timer = DELIVERY_DELAY
 
 
 func update_team_material() -> void:

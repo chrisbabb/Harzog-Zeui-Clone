@@ -34,6 +34,17 @@ enum UnitOrder {
 # Building categories
 enum BuildingType { HQ, OUTPOST }
 
+# Display names for UnitOrder, shared by the command menu and HUD/build menu feedback
+const UNIT_ORDER_NAMES: Dictionary = {
+	UnitOrder.HOLD_POSITION: "Hold Position",
+	UnitOrder.PATROL_RADIUS: "Patrol",
+	UnitOrder.ADVANCE_TO_TARGET: "Advance",
+	UnitOrder.ATTACK_BASE: "Attack Base",
+	UnitOrder.CAPTURE_OUTPOST: "Capture Outpost",
+	UnitOrder.DEFEND_OUTPOST: "Defend Outpost",
+	UnitOrder.SUPPORT_ALLIES: "Support Allies",
+}
+
 # Economy
 const STARTING_MONEY: int = 800
 const BASE_INCOME_PER_SECOND: int = 8

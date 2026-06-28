@@ -24,3 +24,4 @@ signal match_ended(winning_team: int)
 
 signal build_menu_requested
 signal command_menu_requested
+signal hud_message(text: String)

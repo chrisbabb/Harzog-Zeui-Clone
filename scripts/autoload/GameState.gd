@@ -59,6 +59,17 @@ func get_team_buildings(team: int) -> Array[Node]:
 	return buildings
 
 
+func get_nearest_friendly_production_building(team: int, position: Vector3) -> Node:
+	var nearest: Node = null
+	var nearest_distance: float = INF
+	for building in get_team_buildings(team):
+		var distance: float = building.global_position.distance_to(position)
+		if distance < nearest_distance:
+			nearest = building
+			nearest_distance = distance
+	return nearest
+
+
 func get_enemy_team(team: int) -> int:
 	return Constants.Team.ENEMY if team == Constants.Team.PLAYER else Constants.Team.PLAYER
 

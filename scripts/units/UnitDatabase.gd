@@ -37,6 +37,10 @@ static func get_cost(unit_type: int) -> float:
 	return get_unit_data(unit_type).get("cost", 0.0)
 
 
+static func get_unit_name(unit_type: int) -> String:
+	return Constants.UnitType.keys()[unit_type].capitalize()
+
+
 ## Instantiates and positions a unit; the caller is responsible for adding
 ## it to the scene tree, mirroring MapGenerator's create_hq/create_outpost.
 static func create_unit(unit_type: int, team: int, position: Vector3) -> Node3D:
