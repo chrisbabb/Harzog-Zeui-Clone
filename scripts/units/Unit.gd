@@ -12,6 +12,7 @@ const DIRECT_STEER_EPSILON: float = 0.05
 const SUPPLY_REPAIR_RATE: float = 10.0
 const SUPPLY_REFUEL_RATE: float = 8.0
 const SUPPLY_RELOAD_RATE: float = 3.0
+const ORDER_LABEL_HEIGHT: float = 2.2
 
 @export var team: int = Constants.Team.PLAYER
 @export var unit_type: int = Constants.UnitType.TANK
@@ -41,6 +42,7 @@ var attack_cooldown: float = 0.0
 
 var _nearby_bodies: Array[Node] = []
 var _was_navigation_finished: bool = true
+var _order_label: Label3D = null
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -52,12 +54,14 @@ func _ready() -> void:
 	_load_stats()
 	_apply_team_color()
 	_apply_detection_radius()
+	_create_order_label()
 	navigation_agent.path_desired_distance = 0.5
 	navigation_agent.target_desired_distance = Constants.UNIT_NAVIGATION_ARRIVAL_DISTANCE
 	detection_area.body_entered.connect(_on_detection_body_entered)
 	detection_area.body_exited.connect(_on_detection_body_exited)
 	add_to_group("units")
 	_refresh_order_target()
+	_update_order_label()
 	EventBus.unit_created.emit(self)
 
 
@@ -74,6 +78,7 @@ func give_order(order: int, target_position: Vector3 = Vector3.ZERO, target_buil
 	order_target_position = target_position
 	order_target_building = target_building
 	_refresh_order_target()
+	_update_order_label()
 	EventBus.unit_order_changed.emit(self, current_order)
 
 
@@ -144,6 +149,11 @@ func _update_combat(delta: float) -> void:
 
 
 func _find_target() -> Node:
+	if current_order == Constants.UnitOrder.ATTACK_BASE:
+		var hq: Node = order_target_building
+		if is_instance_valid(hq) and hq in _nearby_bodies and _is_valid_target(hq):
+			return hq
+
 	var nearest: Node = null
 	var nearest_distance: float = INF
 	for body in _nearby_bodies:
@@ -251,6 +261,17 @@ func _apply_detection_radius() -> void:
 	var shape: SphereShape3D = detection_shape.shape.duplicate() as SphereShape3D
 	shape.radius = max(max(range, supply_radius), 0.1)
 	detection_shape.shape = shape
+
+
+func _create_order_label() -> void:
+	_order_label = Label3D.new()
+	_order_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_order_label.position = Vector3(0.0, ORDER_LABEL_HEIGHT, 0.0)
+	add_child(_order_label)
+
+
+func _update_order_label() -> void:
+	_order_label.text = Constants.UNIT_ORDER_ABBREVIATIONS.get(current_order, "")
 
 
 func _own_commander() -> Node:

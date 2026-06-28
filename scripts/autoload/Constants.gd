@@ -37,12 +37,23 @@ enum BuildingType { HQ, OUTPOST }
 # Display names for UnitOrder, shared by the command menu and HUD/build menu feedback
 const UNIT_ORDER_NAMES: Dictionary = {
 	UnitOrder.HOLD_POSITION: "Hold Position",
-	UnitOrder.PATROL_RADIUS: "Patrol",
-	UnitOrder.ADVANCE_TO_TARGET: "Advance",
-	UnitOrder.ATTACK_BASE: "Attack Base",
-	UnitOrder.CAPTURE_OUTPOST: "Capture Outpost",
-	UnitOrder.DEFEND_OUTPOST: "Defend Outpost",
+	UnitOrder.PATROL_RADIUS: "Patrol Radius",
+	UnitOrder.ADVANCE_TO_TARGET: "Advance To Target",
+	UnitOrder.ATTACK_BASE: "Attack Enemy HQ",
+	UnitOrder.CAPTURE_OUTPOST: "Capture Nearest Outpost",
+	UnitOrder.DEFEND_OUTPOST: "Defend Friendly Outpost",
 	UnitOrder.SUPPORT_ALLIES: "Support Allies",
+}
+
+# Abbreviations for UnitOrder, shown on the floating order label above units
+const UNIT_ORDER_ABBREVIATIONS: Dictionary = {
+	UnitOrder.HOLD_POSITION: "HOLD",
+	UnitOrder.PATROL_RADIUS: "PATROL",
+	UnitOrder.ADVANCE_TO_TARGET: "ADV",
+	UnitOrder.ATTACK_BASE: "HQ",
+	UnitOrder.CAPTURE_OUTPOST: "CAP",
+	UnitOrder.DEFEND_OUTPOST: "DEF",
+	UnitOrder.SUPPORT_ALLIES: "SUP",
 }
 
 # Economy
@@ -62,6 +73,11 @@ const PICKUP_RANGE: float = 4.5
 const DROP_RANGE: float = 5.0
 const CAPTURE_RADIUS: float = 6.0
 const OUTPOST_CAPTURE_TIME: float = 6.0
+
+# Command menu order-changing: a unit's order can only be changed while it's
+# carried, or while the commander is in GROUND mode within this range of it.
+const ORDER_RANGE: float = 5.0
+const ORDER_CHANGE_COST: int = 20
 
 # Building health
 const HQ_MAX_HP: float = 3000.0

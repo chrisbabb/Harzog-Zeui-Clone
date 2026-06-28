@@ -7,7 +7,8 @@ extends RefCounted
 ## and cache it on the unit (order_target_position/order_target_building)
 ## rather than requiring a caller to have set one already.
 
-const PATROL_RADIUS: float = 12.0
+const PATROL_RADIUS: float = 14.0
+const DEFEND_PATROL_RADIUS: float = 10.0
 
 
 ## Returns the world position a unit with the given order should currently
@@ -43,10 +44,14 @@ static func _resolve_patrol_target(unit: Node) -> Vector3:
 		anchor = unit.global_position
 		unit.set("order_target_position", anchor)
 
+	return _random_offset_within(anchor, PATROL_RADIUS)
+
+
+static func _random_offset_within(anchor: Vector3, radius: float) -> Vector3:
 	var offset := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
 	if offset == Vector3.ZERO:
 		return anchor
-	return anchor + offset.normalized() * randf_range(0.0, PATROL_RADIUS)
+	return anchor + offset.normalized() * randf_range(0.0, radius)
 
 
 static func _resolve_enemy_hq_target(unit: Node) -> Vector3:
@@ -76,16 +81,53 @@ static func _resolve_outpost_target(unit: Node, want_own_team: bool) -> Vector3:
 		building = _nearest_of(unit, candidates)
 		unit.set("order_target_building", building)
 
-	return building.global_position if building != null else unit.global_position
+	if building == null:
+		return unit.global_position
+
+	# Defenders patrol around their outpost rather than parking on its center.
+	if want_own_team:
+		return _random_offset_within(building.global_position, DEFEND_PATROL_RADIUS)
+	return building.global_position
 
 
+## Combat units just follow the nearest friendly group. SupplyTrucks instead
+## seek out whichever ally needs resupplying most, falling back to nearest
+## when nobody is missing hp/fuel/ammo.
 static func _resolve_ally_target(unit: Node) -> Vector3:
 	var allies: Array[Node] = []
 	for ally in unit.get_tree().get_nodes_in_group("units"):
 		if ally != unit and ally.get("team") == unit.get("team"):
 			allies.append(ally)
-	var nearest: Node = _nearest_of(unit, allies)
-	return nearest.global_position if nearest != null else unit.global_position
+
+	var target: Node = null
+	if unit.get("unit_type") == Constants.UnitType.SUPPLY_TRUCK:
+		target = _neediest_of(allies)
+	if target == null:
+		target = _nearest_of(unit, allies)
+
+	return target.global_position if target != null else unit.global_position
+
+
+static func _neediest_of(allies: Array[Node]) -> Node:
+	var neediest: Node = null
+	var worst_score: float = 0.0
+	for ally in allies:
+		var score: float = _deficit_score(ally)
+		if score > worst_score:
+			neediest = ally
+			worst_score = score
+	return neediest
+
+
+static func _deficit_score(ally: Node) -> float:
+	var score: float = _missing_ratio(ally.get("hp"), ally.get("max_hp"))
+	score += _missing_ratio(ally.get("fuel"), ally.get("max_fuel"))
+	score += _missing_ratio(ally.get("ammo"), ally.get("max_ammo"))
+	return score
+
+
+static func _missing_ratio(value: float, max_value: float) -> float:
+	return 1.0 - (value / max_value) if max_value > 0.0 else 0.0
 
 
 static func _nearest_of(unit: Node, candidates: Array[Node]) -> Node:

@@ -232,6 +232,25 @@ func _drop_unit() -> void:
 	EventBus.unit_dropped.emit(unit)
 
 
+## Units whose order the command menu is currently allowed to change: the
+## carried unit if any, otherwise friendly units within ORDER_RANGE while
+## grounded. This is the Herzog-like constraint that forces the player to be
+## near a unit (or holding it) to redirect it.
+func get_reorderable_units() -> Array[Node]:
+	if carried_unit != null and is_instance_valid(carried_unit):
+		var carried: Array[Node] = [carried_unit]
+		return carried
+
+	var nearby: Array[Node] = []
+	if mode != Constants.CommanderMode.GROUND:
+		return nearby
+
+	for unit in get_tree().get_nodes_in_group("units"):
+		if unit.get("team") == team and global_position.distance_to(unit.global_position) <= Constants.ORDER_RANGE:
+			nearby.append(unit)
+	return nearby
+
+
 func _try_fire() -> void:
 	if _fire_cooldown_remaining > 0.0 or ammo < AMMO_FIRE_COST:
 		return
