@@ -7,6 +7,8 @@ const REPAIR_RATE: float = 20.0
 const REFUEL_RATE: float = 12.0
 const RELOAD_RATE: float = 4.0
 const DELIVERY_DELAY: float = 2.5
+const HEALTH_BAR_HEIGHT: float = 5.3
+const HEALTH_BAR_SIZE: Vector3 = Vector3(2.4, 0.25, 0.25)
 
 ## Outposts can only produce lighter/support units, unlike the HQ which builds everything.
 const BUILDABLE_UNIT_TYPES: Array[int] = [
@@ -19,6 +21,7 @@ const BUILDABLE_UNIT_TYPES: Array[int] = [
 
 @export var team: int = Constants.Team.NEUTRAL
 @export var max_hp: float = Constants.OUTPOST_MAX_HP
+@export var armor: String = "heavy"
 @export var refuel_radius: float = 10.0
 @export var repair_radius: float = 8.0
 @export var production_radius: float = 10.0
@@ -29,6 +32,10 @@ var capture_progress_enemy: float = 0.0
 var capture_radius: float = Constants.CAPTURE_RADIUS
 var unit_delivery_queue: Array = []
 var _delivery_timer: float = 0.0
+var _body_material: StandardMaterial3D
+var _flash_remaining: float = 0.0
+var _health_bar: MeshInstance3D
+var _health_bar_material: StandardMaterial3D
 
 @onready var tower_mesh: MeshInstance3D = $TowerMesh
 @onready var ring_mesh: MeshInstance3D = $RingMesh
@@ -45,6 +52,7 @@ func _ready() -> void:
 	_apply_capture_radius()
 	_progress_bar_material = StandardMaterial3D.new()
 	progress_bar_mesh.material_override = _progress_bar_material
+	_create_health_bar()
 	update_team_material()
 	GameState.register_outpost(self)
 
@@ -54,10 +62,13 @@ func _physics_process(delta: float) -> void:
 	_update_progress_bar()
 	_update_supply(delta)
 	_update_delivery(delta)
+	_update_flash(delta)
+	_update_health_bar()
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
-	hp = max(0.0, hp - amount)
+	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
+	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
 	EventBus.building_damaged.emit(self, amount, attacker)
 	if hp <= 0.0:
 		_destroy()
@@ -86,10 +97,12 @@ func reload_commander(commander: Node, delta: float) -> void:
 
 
 func update_team_material() -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Constants.team_color(team)
-	tower_mesh.material_override = material
-	ring_mesh.material_override = material
+	if _body_material == null:
+		_body_material = StandardMaterial3D.new()
+		tower_mesh.material_override = _body_material
+		ring_mesh.material_override = _body_material
+	_body_material.albedo_color = Constants.team_color(team)
+	_health_bar_material.albedo_color = Constants.team_color(team)
 
 
 func can_produce(unit_type: int) -> bool:
@@ -216,3 +229,34 @@ func _destroy() -> void:
 	EventBus.building_destroyed.emit(self)
 	GameState.outposts.erase(self)
 	queue_free()
+
+
+## Built in code rather than the .tscn (like Unit.gd's order label/health
+## bar) so Outpost.tscn stays untouched; hidden until the outpost first
+## takes damage. Placed above the existing capture-progress bar.
+func _create_health_bar() -> void:
+	_health_bar = MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = HEALTH_BAR_SIZE
+	_health_bar.mesh = mesh
+	_health_bar_material = StandardMaterial3D.new()
+	_health_bar_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_health_bar_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	_health_bar.material_override = _health_bar_material
+	_health_bar.position = Vector3(0.0, HEALTH_BAR_HEIGHT, 0.0)
+	_health_bar.visible = false
+	add_child(_health_bar)
+
+
+func _update_health_bar() -> void:
+	var ratio: float = hp / max_hp if max_hp > 0.0 else 0.0
+	_health_bar.visible = ratio < 1.0
+	if _health_bar.visible:
+		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
+
+
+func _update_flash(delta: float) -> void:
+	if _flash_remaining <= 0.0:
+		return
+	_flash_remaining -= delta
+	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)

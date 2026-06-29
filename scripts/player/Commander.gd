@@ -28,6 +28,20 @@ const AMMO_FIRE_COST: float = 5.0
 const FIRE_COOLDOWN: float = 0.35
 const AIR_FIRE_SPREAD_DEGREES: float = 6.0
 
+# AIR fires a faster, lighter, less accurate bolt that can hit anything;
+# GROUND fires a slower, harder-hitting one that only hits ground targets,
+# except an enemy commander caught hovering close by is fair game too.
+const AIR_MODE_DAMAGE: float = 18.0
+const GROUND_MODE_DAMAGE: float = 30.0
+const AIR_MODE_PROJECTILE_SPEED: float = 45.0
+const GROUND_MODE_PROJECTILE_SPEED: float = 30.0
+const PROJECTILE_RANGE: float = 40.0
+const GROUND_CLOSE_AIR_HIT_RANGE: float = 6.0
+
+const MUZZLE_FLASH_DURATION: float = 0.08
+const MUZZLE_FLASH_SIZE: float = 0.35
+const MUZZLE_FLASH_COLOR: Color = Color(1.0, 0.9, 0.5)
+
 # Transform animation
 const SQUASH_SCALE: Vector3 = Vector3(1.3, 0.7, 1.3)
 
@@ -44,6 +58,10 @@ var carried_unit: Node = null
 
 var _transform_locked_remaining: float = 0.0
 var _fire_cooldown_remaining: float = 0.0
+var _body_material: StandardMaterial3D
+var _flash_remaining: float = 0.0
+var _muzzle_flash: MeshInstance3D
+var _muzzle_flash_remaining: float = 0.0
 
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var ground_mesh: MeshInstance3D = $MeshRoot/GroundMesh
@@ -52,6 +70,7 @@ var _fire_cooldown_remaining: float = 0.0
 
 func _ready() -> void:
 	_apply_team_color()
+	_create_muzzle_flash()
 	_update_mode_visuals()
 	EventBus.commander_mode_changed.emit(mode)
 	EventBus.commander_fuel_changed.emit(fuel)
@@ -80,8 +99,9 @@ func _physics_process(delta: float) -> void:
 		carried_unit.global_position = global_position
 
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, attacker: Node = null) -> void:
 	hp = max(0.0, hp - amount)
+	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
 	if hp <= 0.0:
 		die()
 
@@ -99,6 +119,8 @@ func _update_timers(delta: float) -> void:
 		_transform_locked_remaining -= delta
 	if _fire_cooldown_remaining > 0.0:
 		_fire_cooldown_remaining -= delta
+	_update_flash(delta)
+	_update_muzzle_flash(delta)
 
 
 func _get_camera_relative_input() -> Vector3:
@@ -191,10 +213,45 @@ func _update_mode_visuals() -> void:
 
 
 func _apply_team_color() -> void:
+	_body_material = StandardMaterial3D.new()
+	_body_material.albedo_color = Constants.team_color(team)
+	ground_mesh.material_override = _body_material
+	air_mesh.material_override = _body_material
+
+
+func _update_flash(delta: float) -> void:
+	if _flash_remaining <= 0.0:
+		return
+	_flash_remaining -= delta
+	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
+
+
+## Built in code rather than the .tscn, like Unit.gd's order label/health
+## bar, so Commander.tscn stays untouched. A small unshaded sphere a step
+## ahead of the hull, only shown for an instant right after firing.
+func _create_muzzle_flash() -> void:
+	_muzzle_flash = MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = MUZZLE_FLASH_SIZE
+	mesh.height = MUZZLE_FLASH_SIZE * 2.0
+	_muzzle_flash.mesh = mesh
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Constants.team_color(team)
-	ground_mesh.material_override = material
-	air_mesh.material_override = material
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.emission_enabled = true
+	material.albedo_color = MUZZLE_FLASH_COLOR
+	material.emission = MUZZLE_FLASH_COLOR
+	_muzzle_flash.material_override = material
+	_muzzle_flash.position = Vector3(0.0, 0.0, -PROJECTILE_FORWARD_OFFSET)
+	_muzzle_flash.visible = false
+	add_child(_muzzle_flash)
+
+
+func _update_muzzle_flash(delta: float) -> void:
+	if _muzzle_flash_remaining <= 0.0:
+		return
+	_muzzle_flash_remaining -= delta
+	if _muzzle_flash_remaining <= 0.0:
+		_muzzle_flash.visible = false
 
 
 func _toggle_pickup_drop() -> void:
@@ -209,7 +266,7 @@ func _pickup_nearest_unit() -> void:
 	var nearest_distance: float = Constants.PICKUP_RANGE
 
 	for unit in get_tree().get_nodes_in_group("units"):
-		if unit.get("team") != team:
+		if unit.get("team") != team or unit.get("is_destroyed"):
 			continue
 		var distance: float = global_position.distance_to(unit.global_position)
 		if distance <= nearest_distance:
@@ -246,7 +303,7 @@ func get_reorderable_units() -> Array[Node]:
 		return nearby
 
 	for unit in get_tree().get_nodes_in_group("units"):
-		if unit.get("team") == team and global_position.distance_to(unit.global_position) <= Constants.ORDER_RANGE:
+		if unit.get("team") == team and not unit.get("is_destroyed") and global_position.distance_to(unit.global_position) <= Constants.ORDER_RANGE:
 			nearby.append(unit)
 	return nearby
 
@@ -259,20 +316,45 @@ func _try_fire() -> void:
 	EventBus.commander_ammo_changed.emit(ammo)
 	_fire_cooldown_remaining = FIRE_COOLDOWN
 	_spawn_projectile()
+	_trigger_muzzle_flash()
 
 
 func _spawn_projectile() -> void:
+	var is_air_mode: bool = mode == Constants.CommanderMode.AIR
 	var fire_direction: Vector3 = -global_transform.basis.z
-	if mode == Constants.CommanderMode.AIR:
+	if is_air_mode:
 		var spread: float = deg_to_rad(randf_range(-AIR_FIRE_SPREAD_DEGREES, AIR_FIRE_SPREAD_DEGREES))
 		fire_direction = fire_direction.rotated(Vector3.UP, spread)
 
-	var spawn_parent: Node = get_parent().get_node_or_null("EffectsRoot")
-	if spawn_parent == null:
-		spawn_parent = get_parent()
-
 	var projectile: Node3D = PROJECTILE_SCENE.instantiate() as Node3D
-	spawn_parent.add_child(projectile)
+	_get_effects_root().add_child(projectile)
 	projectile.global_position = global_position + (fire_direction * PROJECTILE_FORWARD_OFFSET)
 	projectile.set("team", team)
-	projectile.set("direction", fire_direction)
+	projectile.set("damage", AIR_MODE_DAMAGE if is_air_mode else GROUND_MODE_DAMAGE)
+	projectile.set("speed", AIR_MODE_PROJECTILE_SPEED if is_air_mode else GROUND_MODE_PROJECTILE_SPEED)
+	projectile.set("target_position", global_position + (fire_direction * PROJECTILE_RANGE))
+	projectile.set("can_hit_air", is_air_mode or _enemy_commander_is_close())
+	projectile.set("can_hit_ground", true)
+	projectile.set("source", self)
+
+
+func _trigger_muzzle_flash() -> void:
+	_muzzle_flash.visible = true
+	_muzzle_flash_remaining = MUZZLE_FLASH_DURATION
+
+
+## GROUND mode normally can't hit air targets, but an enemy commander
+## hovering this close overhead is still fair game.
+func _enemy_commander_is_close() -> bool:
+	var hostile: Node = _enemy_commander()
+	return hostile != null and is_instance_valid(hostile) \
+		and global_position.distance_to(hostile.global_position) <= GROUND_CLOSE_AIR_HIT_RANGE
+
+
+func _enemy_commander() -> Node:
+	return GameState.enemy_commander if team == Constants.Team.PLAYER else GameState.player_commander
+
+
+func _get_effects_root() -> Node:
+	var effects_root: Node = get_parent().get_node_or_null("EffectsRoot")
+	return effects_root if effects_root != null else get_parent()

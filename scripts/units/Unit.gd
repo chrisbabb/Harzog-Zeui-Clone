@@ -13,6 +13,13 @@ const SUPPLY_REPAIR_RATE: float = 10.0
 const SUPPLY_REFUEL_RATE: float = 8.0
 const SUPPLY_RELOAD_RATE: float = 3.0
 const ORDER_LABEL_HEIGHT: float = 2.2
+const PROJECTILE_SPEED: float = 28.0
+const ARTILLERY_PROJECTILE_SPEED: float = 16.0
+const ARTILLERY_PROJECTILE_SCALE: float = 1.8
+const HEALTH_BAR_HEIGHT: float = 2.6
+const HEALTH_BAR_SIZE: Vector3 = Vector3(1.2, 0.15, 0.05)
+const WRECK_FADE_DURATION: float = 5.0
+const PROJECTILE_SCENE: PackedScene = preload("res://scenes/effects/Projectile.tscn")
 
 @export var team: int = Constants.Team.PLAYER
 @export var unit_type: int = Constants.UnitType.TANK
@@ -29,6 +36,7 @@ var ground_damage: float
 var air_damage: float
 var fire_rate: float
 var supply_radius: float = 0.0
+var armor: String = "light"
 
 var current_order: int = Constants.UnitOrder.HOLD_POSITION
 var order_target_position: Vector3 = Vector3.ZERO
@@ -39,15 +47,22 @@ var is_carried: bool = false
 
 var current_enemy_target: Node = null
 var attack_cooldown: float = 0.0
+var is_destroyed: bool = false
 
 var _nearby_bodies: Array[Node] = []
 var _was_navigation_finished: bool = true
 var _order_label: Label3D = null
+var _body_material: StandardMaterial3D
+var _flash_remaining: float = 0.0
+var _health_bar: MeshInstance3D = null
+var _health_bar_material: StandardMaterial3D
+var _wreck_remaining: float = 0.0
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var detection_area: Area3D = $DetectionArea
 @onready var detection_shape: CollisionShape3D = $DetectionArea/CollisionShape3D
+@onready var muzzle: Node3D = get_node_or_null("Muzzle")
 
 
 func _ready() -> void:
@@ -55,6 +70,7 @@ func _ready() -> void:
 	_apply_team_color()
 	_apply_detection_radius()
 	_create_order_label()
+	_create_health_bar()
 	navigation_agent.path_desired_distance = 0.5
 	navigation_agent.target_desired_distance = Constants.UNIT_NAVIGATION_ARRIVAL_DISTANCE
 	detection_area.body_entered.connect(_on_detection_body_entered)
@@ -68,9 +84,13 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if is_carried:
 		return
+	if is_destroyed:
+		_update_wreck(delta)
+		return
 	_update_timers(delta)
 	_update_combat(delta)
 	_update_movement(delta)
+	_update_health_bar()
 
 
 func give_order(order: int, target_position: Vector3 = Vector3.ZERO, target_building: Node = null) -> void:
@@ -90,15 +110,28 @@ func stop() -> void:
 	give_order(Constants.UnitOrder.HOLD_POSITION)
 
 
-func take_damage(amount: float) -> void:
-	hp = max(0.0, hp - amount)
+func take_damage(amount: float, attacker: Node = null) -> void:
+	if is_destroyed:
+		return
+	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
+	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
 	if hp <= 0.0:
 		die()
 
 
 func die() -> void:
+	if is_destroyed:
+		return
+	is_destroyed = true
 	EventBus.unit_destroyed.emit(self)
-	queue_free()
+	detection_area.monitoring = false
+	_nearby_bodies.clear()
+	current_enemy_target = null
+	_order_label.visible = false
+	if _health_bar != null:
+		_health_bar.visible = false
+	_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_wreck_remaining = WRECK_FADE_DURATION
 
 
 func set_carried(carried: bool) -> void:
@@ -129,11 +162,13 @@ func _load_stats() -> void:
 	air_damage = data.get("air_damage", 0.0)
 	fire_rate = data.get("fire_rate", 1.0)
 	supply_radius = data.get("supply_radius", 0.0)
+	armor = data.get("armor", "light")
 
 
 func _update_timers(delta: float) -> void:
 	if attack_cooldown > 0.0:
 		attack_cooldown -= delta
+	_update_flash(delta)
 
 
 func _update_combat(delta: float) -> void:
@@ -148,28 +183,90 @@ func _update_combat(delta: float) -> void:
 		_fire_at(current_enemy_target)
 
 
+## Priority order: 1) an airborne enemy commander, if we can hit air at all;
+## 2/3) the nearest enemy unit/commander in range, except an enemy actively
+## capturing one of our outposts always outranks a plain skirmish target;
+## 4) the HQ/outpost we were ordered to attack, once nothing more urgent
+## qualifies.
 func _find_target() -> Node:
-	if current_order == Constants.UnitOrder.ATTACK_BASE:
-		var hq: Node = order_target_building
-		if is_instance_valid(hq) and hq in _nearby_bodies and _is_valid_target(hq):
-			return hq
+	var air_target: Node = _find_air_commander_target()
+	if air_target != null:
+		return air_target
 
-	var nearest: Node = null
+	var skirmish_target: Node = _find_skirmish_target()
+	if skirmish_target != null:
+		return skirmish_target
+
+	return _find_ordered_attack_target()
+
+
+func _find_air_commander_target() -> Node:
+	if air_damage <= 0.0:
+		return null
+	var hostile_commander: Node = _enemy_commander()
+	if hostile_commander == null or hostile_commander not in _nearby_bodies:
+		return null
+	if hostile_commander.get("mode") != Constants.CommanderMode.AIR:
+		return null
+	return hostile_commander if _is_valid_target(hostile_commander) else null
+
+
+func _find_skirmish_target() -> Node:
+	var nearest_enemy: Node = null
 	var nearest_distance: float = INF
+	var outpost_threat: Node = null
+	var outpost_threat_distance: float = INF
+
 	for body in _nearby_bodies:
-		if not _is_valid_target(body):
+		if not _is_valid_target(body) or not _is_unit_or_commander(body):
 			continue
 		var distance: float = global_position.distance_to(body.global_position)
 		if distance < nearest_distance:
-			nearest = body
+			nearest_enemy = body
 			nearest_distance = distance
-	return nearest
+		if _is_capturing_friendly_outpost(body) and distance < outpost_threat_distance:
+			outpost_threat = body
+			outpost_threat_distance = distance
+
+	return outpost_threat if outpost_threat != null else nearest_enemy
+
+
+func _find_ordered_attack_target() -> Node:
+	if current_order != Constants.UnitOrder.ATTACK_BASE:
+		return null
+	var hq: Node = order_target_building
+	if is_instance_valid(hq) and hq in _nearby_bodies and _is_valid_target(hq):
+		return hq
+	return null
+
+
+func _is_unit_or_commander(body: Node) -> bool:
+	return body.is_in_group("units") or body == GameState.player_commander or body == GameState.enemy_commander
+
+
+## True if body is an enemy currently inside the capture radius of one of
+## our outposts with an order to capture it -- worth interrupting a
+## skirmish for, since losing the outpost is costlier than one kill.
+func _is_capturing_friendly_outpost(body: Node) -> bool:
+	if body.get("current_order") != Constants.UnitOrder.CAPTURE_OUTPOST:
+		return false
+	for outpost in GameState.outposts:
+		if is_instance_valid(outpost) and outpost.get("team") == team \
+			and outpost.global_position.distance_to(body.global_position) <= Constants.CAPTURE_RADIUS:
+			return true
+	return false
+
+
+func _enemy_commander() -> Node:
+	return GameState.enemy_commander if team == Constants.Team.PLAYER else GameState.player_commander
 
 
 func _is_valid_target(body: Node) -> bool:
 	if not is_instance_valid(body) or body.get("team") != GameState.get_enemy_team(team):
 		return false
-	if body.is_in_group("units") or body == GameState.player_commander or body == GameState.enemy_commander:
+	if body.get("is_destroyed") == true:
+		return false
+	if _is_unit_or_commander(body):
 		return _damage_for_target(body) > 0.0
 	# Anything else on the detection layer is assumed to be a building.
 	return ground_damage > 0.0 and body.has_method("take_damage")
@@ -188,7 +285,31 @@ func _damage_for_target(body: Node) -> float:
 func _fire_at(target: Node) -> void:
 	ammo -= AMMO_PER_SHOT
 	attack_cooldown = fire_rate
-	target.take_damage(_damage_for_target(target))
+	_spawn_projectile(target)
+
+
+## Artillery lobs a slower, larger, visually arcing shell; everyone else
+## fires a flat, fast bolt straight at the target.
+func _spawn_projectile(target: Node) -> void:
+	var is_artillery: bool = unit_type == Constants.UnitType.ARTILLERY
+	var projectile: Node3D = PROJECTILE_SCENE.instantiate() as Node3D
+	_get_effects_root().add_child(projectile)
+	projectile.global_position = muzzle.global_position if muzzle != null else global_position
+	projectile.set("team", team)
+	projectile.set("damage", _damage_for_target(target))
+	projectile.set("speed", ARTILLERY_PROJECTILE_SPEED if is_artillery else PROJECTILE_SPEED)
+	projectile.set("target_position", target.global_position)
+	projectile.set("can_hit_air", air_damage > 0.0)
+	projectile.set("can_hit_ground", ground_damage > 0.0)
+	projectile.set("source", self)
+	projectile.set("is_arcing", is_artillery)
+	if is_artillery:
+		projectile.scale = Vector3.ONE * ARTILLERY_PROJECTILE_SCALE
+
+
+func _get_effects_root() -> Node:
+	var effects_root: Node = get_parent().get_parent().get_node_or_null("EffectsRoot")
+	return effects_root if effects_root != null else get_parent()
 
 
 func _update_supply_aura(delta: float) -> void:
@@ -251,10 +372,10 @@ func _refresh_order_target() -> void:
 ## wheels, ...), so every MeshInstance3D in the scene is tinted rather than
 ## assuming a single fixed mesh node.
 func _apply_team_color() -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Constants.team_color(team)
+	_body_material = StandardMaterial3D.new()
+	_body_material.albedo_color = Constants.team_color(team)
 	for mesh in find_children("*", "MeshInstance3D", true, false):
-		(mesh as MeshInstance3D).material_override = material
+		(mesh as MeshInstance3D).material_override = _body_material
 
 
 func _apply_detection_radius() -> void:
@@ -272,6 +393,44 @@ func _create_order_label() -> void:
 
 func _update_order_label() -> void:
 	_order_label.text = Constants.UNIT_ORDER_ABBREVIATIONS.get(current_order, "")
+
+
+## Built in code rather than the .tscn (like the order label above) so all
+## 8 unit scenes stay untouched; hidden until the unit first takes damage.
+func _create_health_bar() -> void:
+	_health_bar = MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = HEALTH_BAR_SIZE
+	_health_bar.mesh = mesh
+	_health_bar_material = StandardMaterial3D.new()
+	_health_bar_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_health_bar_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	_health_bar_material.albedo_color = Constants.team_color(team)
+	_health_bar.material_override = _health_bar_material
+	_health_bar.position = Vector3(0.0, HEALTH_BAR_HEIGHT, 0.0)
+	_health_bar.visible = false
+	add_child(_health_bar)
+
+
+func _update_health_bar() -> void:
+	var ratio: float = hp / max_hp if max_hp > 0.0 else 0.0
+	_health_bar.visible = ratio < 1.0
+	if _health_bar.visible:
+		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
+
+
+func _update_flash(delta: float) -> void:
+	if _flash_remaining <= 0.0:
+		return
+	_flash_remaining -= delta
+	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
+
+
+func _update_wreck(delta: float) -> void:
+	_wreck_remaining -= delta
+	_body_material.albedo_color.a = clamp(_wreck_remaining / WRECK_FADE_DURATION, 0.0, 1.0)
+	if _wreck_remaining <= 0.0:
+		queue_free()
 
 
 func _own_commander() -> Node:

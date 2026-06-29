@@ -83,6 +83,18 @@ const ORDER_CHANGE_COST: int = 20
 const HQ_MAX_HP: float = 3000.0
 const OUTPOST_MAX_HP: float = 1000.0
 
+# Armor reduces incoming damage by a flat percentage, keyed by the "armor"
+# string from data/units.json (also used as the default for buildings).
+const ARMOR_DAMAGE_MULTIPLIERS: Dictionary = {
+	"light": 1.0,
+	"medium": 0.85,
+	"heavy": 0.70,
+}
+
+# Shared brief flash applied to a body's material when it takes damage.
+const DAMAGE_FLASH_DURATION: float = 0.12
+const DAMAGE_FLASH_COLOR: Color = Color(1.0, 1.0, 1.0)
+
 # Generic ground-unit movement defaults, for unit types without a tuned speed yet
 const UNIT_DEFAULT_SPEED: float = 4.0
 const UNIT_NAVIGATION_ARRIVAL_DISTANCE: float = 0.5
@@ -122,3 +134,7 @@ static func team_color(team: int) -> Color:
 	elif team == Team.ENEMY:
 		return COLOR_ENEMY
 	return COLOR_NEUTRAL
+
+
+static func armor_multiplier(armor: String) -> float:
+	return ARMOR_DAMAGE_MULTIPLIERS.get(armor, 1.0)

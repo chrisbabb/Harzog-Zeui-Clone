@@ -7,9 +7,12 @@ const REPAIR_RATE: float = 40.0
 const REFUEL_RATE: float = 25.0
 const RELOAD_RATE: float = 8.0
 const DELIVERY_DELAY: float = 1.5
+const HEALTH_BAR_HEIGHT: float = 11.0
+const HEALTH_BAR_SIZE: Vector3 = Vector3(4.0, 0.3, 0.3)
 
 @export var team: int = Constants.Team.PLAYER
 @export var max_hp: float = Constants.HQ_MAX_HP
+@export var armor: String = "heavy"
 @export var refuel_radius: float = 14.0
 @export var repair_radius: float = 12.0
 @export var production_radius: float = 14.0
@@ -18,6 +21,10 @@ var building_type: int = Constants.BuildingType.HQ
 var hp: float
 var unit_delivery_queue: Array = []
 var _delivery_timer: float = 0.0
+var _body_material: StandardMaterial3D
+var _flash_remaining: float = 0.0
+var _health_bar: MeshInstance3D
+var _health_bar_material: StandardMaterial3D
 
 @onready var body_mesh: MeshInstance3D = $BodyMesh
 @onready var tower_mesh: MeshInstance3D = $TowerMesh
@@ -26,6 +33,7 @@ var _delivery_timer: float = 0.0
 
 func _ready() -> void:
 	hp = max_hp
+	_create_health_bar()
 	update_team_material()
 	GameState.register_hq(self)
 
@@ -33,6 +41,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_update_supply(delta)
 	_update_delivery(delta)
+	_update_flash(delta)
+	_update_health_bar()
 
 
 func setup(new_team: int, new_position: Vector3) -> void:
@@ -41,7 +51,8 @@ func setup(new_team: int, new_position: Vector3) -> void:
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
-	hp = max(0.0, hp - amount)
+	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
+	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
 	EventBus.building_damaged.emit(self, amount, attacker)
 	if hp <= 0.0:
 		_destroy()
@@ -118,10 +129,12 @@ func _update_delivery(delta: float) -> void:
 
 
 func update_team_material() -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Constants.team_color(team)
-	body_mesh.material_override = material
-	tower_mesh.material_override = material
+	if _body_material == null:
+		_body_material = StandardMaterial3D.new()
+		body_mesh.material_override = _body_material
+		tower_mesh.material_override = _body_material
+	_body_material.albedo_color = Constants.team_color(team)
+	_health_bar_material.albedo_color = Constants.team_color(team)
 
 
 func _update_supply(delta: float) -> void:
@@ -152,3 +165,33 @@ func _destroy() -> void:
 	var winning_team: int = GameState.get_enemy_team(team)
 	GameState.end_match(winning_team)
 	queue_free()
+
+
+## Built in code rather than the .tscn (like Unit.gd's order label/health
+## bar) so Base.tscn stays untouched; hidden until the HQ first takes damage.
+func _create_health_bar() -> void:
+	_health_bar = MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = HEALTH_BAR_SIZE
+	_health_bar.mesh = mesh
+	_health_bar_material = StandardMaterial3D.new()
+	_health_bar_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_health_bar_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	_health_bar.material_override = _health_bar_material
+	_health_bar.position = Vector3(0.0, HEALTH_BAR_HEIGHT, 0.0)
+	_health_bar.visible = false
+	add_child(_health_bar)
+
+
+func _update_health_bar() -> void:
+	var ratio: float = hp / max_hp if max_hp > 0.0 else 0.0
+	_health_bar.visible = ratio < 1.0
+	if _health_bar.visible:
+		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
+
+
+func _update_flash(delta: float) -> void:
+	if _flash_remaining <= 0.0:
+		return
+	_flash_remaining -= delta
+	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
