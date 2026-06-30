@@ -87,9 +87,10 @@ static func _resolve_outpost_target(unit: Node, want_own_team: bool) -> Vector3:
 ## seek out whichever ally needs resupplying most, falling back to nearest
 ## when nobody is missing hp/fuel/ammo.
 static func _resolve_ally_target(unit: Node) -> Vector3:
+	var team_group: String = "player_units" if unit.get("team") == Constants.Team.PLAYER else "enemy_units"
 	var allies: Array[Node] = []
-	for ally in unit.get_tree().get_nodes_in_group("units"):
-		if ally != unit and ally.get("team") == unit.get("team"):
+	for ally in unit.get_tree().get_nodes_in_group(team_group):
+		if ally != unit:
 			allies.append(ally)
 
 	var target: Node = null

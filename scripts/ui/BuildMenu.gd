@@ -6,6 +6,7 @@ extends Control
 const HOTKEY_KEYCODES: Array[int] = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8]
 const NOT_IN_RANGE_MESSAGE: String = "Move near a friendly HQ or outpost to order units."
 const INSUFFICIENT_FUNDS_MESSAGE: String = "Insufficient credits."
+const UNIT_CAP_MESSAGE: String = "Unit cap reached (%d max)." % Constants.MAX_UNITS_PER_TEAM
 
 @onready var options_container: VBoxContainer = $Panel/MarginContainer/ListContainer/OptionsContainer
 @onready var close_button: Button = $Panel/MarginContainer/ListContainer/CloseButton
@@ -17,6 +18,8 @@ func _ready() -> void:
 	visible = false
 	EventBus.build_menu_requested.connect(toggle)
 	EventBus.money_changed.connect(_on_money_changed)
+	EventBus.unit_created.connect(_on_unit_count_changed)
+	EventBus.unit_destroyed.connect(_on_unit_count_changed)
 	close_button.pressed.connect(close)
 	_populate_options()
 	_refresh_affordability()
@@ -73,9 +76,10 @@ func _option_text(unit_type: int) -> String:
 
 
 func _refresh_affordability() -> void:
+	var at_cap: bool = GameState.get_unit_count(Constants.Team.PLAYER) >= Constants.MAX_UNITS_PER_TEAM
 	for unit_type in _buttons_by_type:
 		var button: Button = _buttons_by_type[unit_type]
-		button.disabled = not Economy.can_afford(Constants.Team.PLAYER, UnitDatabase.get_cost(unit_type))
+		button.disabled = at_cap or not Economy.can_afford(Constants.Team.PLAYER, UnitDatabase.get_cost(unit_type))
 
 
 func _on_money_changed(team: int, _amount: float) -> void:
@@ -83,8 +87,16 @@ func _on_money_changed(team: int, _amount: float) -> void:
 		_refresh_affordability()
 
 
+func _on_unit_count_changed(_unit: Node) -> void:
+	_refresh_affordability()
+
+
 func _attempt_purchase(unit_type: int) -> void:
 	if not _commander_alive():
+		return
+
+	if GameState.get_unit_count(Constants.Team.PLAYER) >= Constants.MAX_UNITS_PER_TEAM:
+		EventBus.hud_message.emit(UNIT_CAP_MESSAGE)
 		return
 
 	EventBus.audio_event_requested.emit("ui_select")

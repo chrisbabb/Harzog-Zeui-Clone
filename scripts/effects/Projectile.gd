@@ -31,6 +31,9 @@ var is_arcing: bool = false
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var hit_area: Area3D = $HitArea
 
+static var _cached_player_mat: StandardMaterial3D
+static var _cached_enemy_mat: StandardMaterial3D
+
 var _start_position: Vector3
 var _total_distance: float = 1.0
 var _traveled: float = 0.0
@@ -41,6 +44,7 @@ var _initialized: bool = false
 
 func _ready() -> void:
 	hit_area.body_entered.connect(_on_body_entered)
+	add_to_group("projectiles")
 
 
 ## Deferred to the first physics tick rather than _ready(), since callers
@@ -53,14 +57,38 @@ func _initialize() -> void:
 	_start_position = global_position
 	_total_distance = max(_start_position.distance_to(target_position), 0.01)
 
+	if is_arcing:
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.emission_enabled = true
+		var color: Color = _projectile_color()
+		material.albedo_color = color
+		material.emission = color
+		material.emission_energy_multiplier = ARCING_EMISSION_ENERGY
+		mesh_instance.material_override = material
+	else:
+		mesh_instance.material_override = _get_shared_material()
+
+
+func _get_shared_material() -> StandardMaterial3D:
+	if team == Constants.Team.PLAYER:
+		if _cached_player_mat == null:
+			_cached_player_mat = _make_mat(PLAYER_PROJECTILE_COLOR, DEFAULT_EMISSION_ENERGY)
+		return _cached_player_mat
+	else:
+		if _cached_enemy_mat == null:
+			_cached_enemy_mat = _make_mat(ENEMY_PROJECTILE_COLOR, DEFAULT_EMISSION_ENERGY)
+		return _cached_enemy_mat
+
+
+static func _make_mat(color: Color, energy: float) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.emission_enabled = true
-	var color: Color = _projectile_color()
 	material.albedo_color = color
 	material.emission = color
-	material.emission_energy_multiplier = ARCING_EMISSION_ENERGY if is_arcing else DEFAULT_EMISSION_ENERGY
-	mesh_instance.material_override = material
+	material.emission_energy_multiplier = energy
+	return material
 
 
 func _physics_process(delta: float) -> void:

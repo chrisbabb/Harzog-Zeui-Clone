@@ -18,6 +18,9 @@ var selected_order: int = Constants.UnitOrder.HOLD_POSITION
 
 var winner: int = -1
 
+var player_unit_count: int = 0
+var enemy_unit_count: int = 0
+
 # Skirmish setup: chosen once on the setup screen, then read by MapGenerator,
 # Economy, EnemyAI, and Game for the whole match. Intentionally left out of
 # reset_match_state() so a "Restart Match" keeps the player's chosen settings.
@@ -26,6 +29,11 @@ var selected_difficulty: int = 1 # Normal
 var selected_starting_credits: int = Constants.STARTING_MONEY
 var selected_match_speed: int = Constants.MatchSpeed.NORMAL
 var selected_outpost_count: int = 7
+
+
+func _ready() -> void:
+	EventBus.unit_created.connect(_on_unit_created)
+	EventBus.unit_destroyed.connect(_on_unit_destroyed)
 
 
 func _process(delta: float) -> void:
@@ -79,6 +87,24 @@ func get_nearest_friendly_production_building(team: int, position: Vector3) -> N
 	return nearest
 
 
+func get_unit_count(team: int) -> int:
+	return player_unit_count if team == Constants.Team.PLAYER else enemy_unit_count
+
+
+func _on_unit_created(unit: Node) -> void:
+	if unit.get("team") == Constants.Team.PLAYER:
+		player_unit_count += 1
+	elif unit.get("team") == Constants.Team.ENEMY:
+		enemy_unit_count += 1
+
+
+func _on_unit_destroyed(unit: Node) -> void:
+	if unit.get("team") == Constants.Team.PLAYER:
+		player_unit_count = max(0, player_unit_count - 1)
+	elif unit.get("team") == Constants.Team.ENEMY:
+		enemy_unit_count = max(0, enemy_unit_count - 1)
+
+
 func get_enemy_team(team: int) -> int:
 	return Constants.Team.ENEMY if team == Constants.Team.PLAYER else Constants.Team.PLAYER
 
@@ -102,3 +128,5 @@ func reset_match_state() -> void:
 	selected_unit_type = Constants.UnitType.SCOUT_BUGGY
 	selected_order = Constants.UnitOrder.HOLD_POSITION
 	winner = -1
+	player_unit_count = 0
+	enemy_unit_count = 0

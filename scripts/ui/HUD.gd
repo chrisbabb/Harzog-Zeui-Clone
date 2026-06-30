@@ -3,6 +3,7 @@ extends CanvasLayer
 ## match timer, build/command menus, pause menu, and match-end overlay.
 
 const FEEDBACK_DURATION: float = 4.0
+const HUD_POLL_INTERVAL: float = 0.1
 
 var _units_built: int = 0
 var _units_lost: int = 0
@@ -10,6 +11,7 @@ var _units_destroyed: int = 0
 var _outposts_captured: int = 0
 
 var _feedback_timer: float = 0.0
+var _hud_poll_timer: float = 0.0
 var _prev_unit_type: int = -1
 var _prev_order: int = -1
 
@@ -65,10 +67,13 @@ func _process(delta: float) -> void:
 		if _feedback_timer <= 0.0:
 			_feedback_label.text = ""
 
-	_update_timer()
-	_update_commander_panel()
-	_update_hq_bars()
-	_update_selected_labels()
+	_hud_poll_timer -= delta
+	if _hud_poll_timer <= 0.0:
+		_hud_poll_timer = HUD_POLL_INTERVAL
+		_update_timer()
+		_update_commander_panel()
+		_update_hq_bars()
+		_update_selected_labels()
 
 
 func _unhandled_input(_event: InputEvent) -> void:

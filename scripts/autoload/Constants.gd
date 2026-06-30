@@ -130,6 +130,9 @@ const AI_WAVE_INTERVALS: Array[float] = [36.0, 24.0, 15.0]
 # units, triggering a defensive unit-type bias regardless of difficulty.
 const AI_THREAT_RADIUS: float = 30.0
 
+# Maximum number of ground units either team may field simultaneously.
+const MAX_UNITS_PER_TEAM: int = 60
+
 # Shared brief flash applied to a body's material when it takes damage.
 const DAMAGE_FLASH_DURATION: float = 0.12
 const DAMAGE_FLASH_COLOR: Color = Color(1.0, 1.0, 1.0)

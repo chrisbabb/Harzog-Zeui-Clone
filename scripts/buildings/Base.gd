@@ -41,6 +41,7 @@ func _ready() -> void:
 	_create_team_strip()
 	update_team_material()
 	GameState.register_hq(self)
+	add_to_group("buildings")
 
 
 func _physics_process(delta: float) -> void:
@@ -156,9 +157,8 @@ func _update_supply(delta: float) -> void:
 			refuel_commander(commander, delta)
 			reload_commander(commander, delta)
 
-	for unit in get_tree().get_nodes_in_group("units"):
-		if unit.get("team") != team:
-			continue
+	var team_group: String = "player_units" if team == Constants.Team.PLAYER else "enemy_units"
+	for unit in get_tree().get_nodes_in_group(team_group):
 		if global_position.distance_to(unit.global_position) <= repair_radius:
 			_heal(unit, REPAIR_RATE * delta)
 

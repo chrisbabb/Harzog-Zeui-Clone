@@ -50,26 +50,29 @@ func _process(delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _make_decisions() -> void:
-	var all_units: Array = get_tree().get_nodes_in_group("units")
+	var enemy_units: Array = get_tree().get_nodes_in_group("enemy_units")
+	var player_units: Array = get_tree().get_nodes_in_group("player_units")
 	var owned_outposts: int = _count_owned_outposts()
-	var under_hq_threat: bool = _is_hq_under_threat(all_units)
+	var under_hq_threat: bool = _is_hq_under_threat(player_units)
 
 	_log("tick | outposts=%d hq_threat=%s money=%.0f" % [
 		owned_outposts, str(under_hq_threat),
 		Economy.get_money(Constants.Team.ENEMY)
 	])
 
-	_try_build_unit(all_units, owned_outposts, under_hq_threat)
-	_assign_unit_orders(all_units, owned_outposts, under_hq_threat)
+	_try_build_unit(enemy_units, owned_outposts, under_hq_threat)
+	_assign_unit_orders(enemy_units, owned_outposts, under_hq_threat)
 
 
 # ---------------------------------------------------------------------------
 # Building units
 # ---------------------------------------------------------------------------
 
-func _try_build_unit(all_units: Array, owned_outposts: int, under_hq_threat: bool) -> void:
+func _try_build_unit(enemy_units: Array, owned_outposts: int, under_hq_threat: bool) -> void:
+	if enemy_units.size() >= Constants.MAX_UNITS_PER_TEAM:
+		return
 	var unit_type: int = TacticalDirector.choose_next_ai_unit(
-		difficulty, owned_outposts, under_hq_threat, all_units
+		difficulty, owned_outposts, under_hq_threat, enemy_units
 	)
 	var cost: float = UnitDatabase.get_cost(unit_type)
 	if not Economy.can_afford(Constants.Team.ENEMY, cost):
@@ -127,11 +130,9 @@ func _default_order_for(unit_type: int, owned_outposts: int) -> int:
 # Order assignment
 # ---------------------------------------------------------------------------
 
-func _assign_unit_orders(all_units: Array, owned_outposts: int, under_hq_threat: bool) -> void:
-	for unit in all_units:
+func _assign_unit_orders(enemy_units: Array, owned_outposts: int, under_hq_threat: bool) -> void:
+	for unit in enemy_units:
 		if not is_instance_valid(unit) or unit.get("is_destroyed"):
-			continue
-		if unit.get("team") != Constants.Team.ENEMY:
 			continue
 
 		var unit_type: int = unit.get("unit_type") if unit.get("unit_type") != null else Constants.UnitType.TANK
@@ -185,10 +186,8 @@ func _launch_wave() -> void:
 	var threshold: int = Constants.AI_WAVE_THRESHOLDS[difficulty]
 	var wave_units: Array[Node] = []
 
-	for unit in get_tree().get_nodes_in_group("units"):
+	for unit in get_tree().get_nodes_in_group("enemy_units"):
 		if not is_instance_valid(unit) or unit.get("is_destroyed"):
-			continue
-		if unit.get("team") != Constants.Team.ENEMY:
 			continue
 		var unit_type: int = unit.get("unit_type")
 		if unit_type == Constants.UnitType.SUPPLY_TRUCK \
@@ -212,11 +211,11 @@ func _launch_wave() -> void:
 # Situation assessment
 # ---------------------------------------------------------------------------
 
-func _is_hq_under_threat(all_units: Array) -> bool:
+func _is_hq_under_threat(player_units: Array) -> bool:
 	if GameState.enemy_hq == null or not is_instance_valid(GameState.enemy_hq):
 		return false
 	return TacticalDirector.get_enemy_pressure_near(
-		GameState.enemy_hq.global_position, Constants.AI_THREAT_RADIUS, all_units
+		GameState.enemy_hq.global_position, Constants.AI_THREAT_RADIUS, player_units
 	) > 0
 
 

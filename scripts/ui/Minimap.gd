@@ -10,6 +10,9 @@ const _UNIT_RADIUS: float = 2.5
 const _COMMANDER_RADIUS: float = 4.0
 const _OUTPOST_RECT: float = 6.0
 const _HQ_RECT: float = 9.0
+const _REDRAW_INTERVAL: float = 1.0 / 8.0
+
+var _redraw_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -17,8 +20,11 @@ func _ready() -> void:
 	world_extent = _zoom_levels[_zoom_index]
 
 
-func _process(_delta: float) -> void:
-	queue_redraw()
+func _process(delta: float) -> void:
+	_redraw_timer -= delta
+	if _redraw_timer <= 0.0:
+		_redraw_timer = _REDRAW_INTERVAL
+		queue_redraw()
 
 
 func _unhandled_input(_event: InputEvent) -> void:

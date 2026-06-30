@@ -21,6 +21,7 @@ const ARTILLERY_PROJECTILE_SPEED: float = 16.0
 const ARTILLERY_PROJECTILE_SCALE: float = 1.8
 const HEALTH_BAR_HEIGHT: float = 2.6
 const HEALTH_BAR_SIZE: Vector3 = Vector3(1.2, 0.15, 0.05)
+const HEALTH_BAR_SHOW_DURATION: float = 8.0
 const WRECK_FADE_DURATION: float = 5.0
 const TEAM_STRIP_OUTER_RADIUS: float = 0.95
 const TEAM_STRIP_INNER_RADIUS: float = 0.78
@@ -63,6 +64,7 @@ var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D = null
 var _health_bar_material: StandardMaterial3D
 var _wreck_remaining: float = 0.0
+var _health_bar_show_timer: float = 0.0
 var _team_strip: MeshInstance3D = null
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
@@ -84,6 +86,10 @@ func _ready() -> void:
 	detection_area.body_entered.connect(_on_detection_body_entered)
 	detection_area.body_exited.connect(_on_detection_body_exited)
 	add_to_group("units")
+	if team == Constants.Team.PLAYER:
+		add_to_group("player_units")
+	else:
+		add_to_group("enemy_units")
 	_refresh_order_target()
 	_update_order_label()
 	EventBus.unit_created.emit(self)
@@ -123,6 +129,7 @@ func take_damage(amount: float, attacker: Node = null) -> void:
 		return
 	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
 	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
+	_health_bar_show_timer = HEALTH_BAR_SHOW_DURATION
 	if hp <= 0.0:
 		die()
 
@@ -131,6 +138,9 @@ func die() -> void:
 	if is_destroyed:
 		return
 	is_destroyed = true
+	remove_from_group("units")
+	remove_from_group("player_units")
+	remove_from_group("enemy_units")
 	EventBus.unit_destroyed.emit(self)
 	detection_area.monitoring = false
 	_nearby_bodies.clear()
@@ -178,6 +188,8 @@ func _load_stats() -> void:
 func _update_timers(delta: float) -> void:
 	if attack_cooldown > 0.0:
 		attack_cooldown -= delta
+	if _health_bar_show_timer > 0.0:
+		_health_bar_show_timer -= delta
 	_update_flash(delta)
 
 
@@ -387,12 +399,12 @@ func _is_near_nav_target() -> bool:
 
 
 ## Nudges away from nearby friendly units so a group doesn't compress into a
-## single stacked point; only checked against teammates since positioning
-## relative to enemies is handled by combat/formation targeting instead.
+## single stacked point; uses _nearby_bodies (detection area) rather than a
+## global group scan to avoid O(n²) cost each physics frame.
 func _separation_offset() -> Vector3:
 	var offset := Vector3.ZERO
-	for other in get_tree().get_nodes_in_group("units"):
-		if other == self or not is_instance_valid(other):
+	for other in _nearby_bodies:
+		if not is_instance_valid(other) or not other.is_in_group("units"):
 			continue
 		if other.get("team") != team or other.get("is_destroyed") or other.get("is_carried"):
 			continue
@@ -435,11 +447,12 @@ func _refresh_order_target() -> void:
 ## instead of all beelining to the same point: tanks/heavy walkers lead,
 ## missile crawlers/anti-air hold the middle, artillery/supply trail behind.
 func _formation_attack_target(hq_position: Vector3) -> Vector3:
+	var team_group: String = "player_units" if team == Constants.Team.PLAYER else "enemy_units"
 	var wave: Array[Node] = []
-	for other in get_tree().get_nodes_in_group("units"):
+	for other in get_tree().get_nodes_in_group(team_group):
 		if not is_instance_valid(other) or other.get("is_destroyed"):
 			continue
-		if other.get("team") != team or other.get("current_order") != Constants.UnitOrder.ATTACK_BASE:
+		if other.get("current_order") != Constants.UnitOrder.ATTACK_BASE:
 			continue
 		wave.append(other)
 
@@ -483,7 +496,7 @@ func _apply_team_color() -> void:
 
 func _apply_detection_radius() -> void:
 	var shape: SphereShape3D = detection_shape.shape.duplicate() as SphereShape3D
-	shape.radius = max(max(range, supply_radius), 0.1)
+	shape.radius = max(max(range, supply_radius), SEPARATION_RADIUS)
 	detection_shape.shape = shape
 
 
@@ -517,8 +530,9 @@ func _create_health_bar() -> void:
 
 func _update_health_bar() -> void:
 	var ratio: float = hp / max_hp if max_hp > 0.0 else 0.0
-	_health_bar.visible = ratio < 1.0
-	if _health_bar.visible:
+	var show: bool = ratio < 1.0 and _health_bar_show_timer > 0.0
+	_health_bar.visible = show
+	if show:
 		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
 
 

@@ -20,6 +20,9 @@ const SPARK_COLOR: Color = Color(1.0, 0.8, 0.4)
 const SHAKE_STRENGTH_SMALL: float = 0.15
 const SHAKE_STRENGTH_LARGE: float = 0.4
 
+static var _shared_spark_quad: QuadMesh
+static var _shared_spark_process_mat: ParticleProcessMaterial
+
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 
 var _material: StandardMaterial3D
@@ -79,6 +82,8 @@ func _create_sparks() -> void:
 
 
 func _build_spark_mesh() -> QuadMesh:
+	if _shared_spark_quad != null:
+		return _shared_spark_quad
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(SPARK_PARTICLE_SIZE, SPARK_PARTICLE_SIZE)
 	var material := StandardMaterial3D.new()
@@ -87,10 +92,13 @@ func _build_spark_mesh() -> QuadMesh:
 	material.vertex_color_use_as_albedo = true
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mesh.material = material
+	_shared_spark_quad = mesh
 	return mesh
 
 
 func _build_spark_process_material() -> ParticleProcessMaterial:
+	if _shared_spark_process_mat != null:
+		return _shared_spark_process_mat
 	var material := ParticleProcessMaterial.new()
 	material.direction = Vector3(0.0, 1.0, 0.0)
 	material.spread = 180.0
@@ -99,12 +107,11 @@ func _build_spark_process_material() -> ParticleProcessMaterial:
 	material.gravity = Vector3(0.0, -4.0, 0.0)
 	material.scale_min = 0.6
 	material.scale_max = 1.3
-
 	var gradient := Gradient.new()
 	gradient.set_color(0, SPARK_COLOR)
 	gradient.set_color(1, Color(SPARK_COLOR.r, SPARK_COLOR.g, SPARK_COLOR.b, 0.0))
 	var texture := GradientTexture1D.new()
 	texture.gradient = gradient
 	material.color_ramp = texture
-
+	_shared_spark_process_mat = material
 	return material
