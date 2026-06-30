@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/Tutorial.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/map/TerrainRoot.gd" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TutorialOverlay.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DebugPanel.tscn" id="5"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_ground1"]
 agent_radius = 0.4
@@ -81,3 +82,5 @@ directional_shadow_max_distance = 170.0
 [node name="HUD" parent="." instance=ExtResource("3")]
 
 [node name="TutorialOverlay" parent="." instance=ExtResource("4")]
+
+[node name="DebugPanel" parent="." instance=ExtResource("5")]
