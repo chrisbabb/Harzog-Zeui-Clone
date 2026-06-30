@@ -37,6 +37,12 @@ static func get_cost(unit_type: int) -> float:
 	return get_unit_data(unit_type).get("cost", 0.0)
 
 
+## Outpost capture speed multiplier for this unit type (see
+## Constants.DEFAULT_UNIT_CAPTURE_POWER / CaptureZone.gd).
+static func get_capture_power(unit_type: int) -> float:
+	return get_unit_data(unit_type).get("capture_power", Constants.DEFAULT_UNIT_CAPTURE_POWER)
+
+
 static func get_unit_name(unit_type: int) -> String:
 	return Constants.UnitType.keys()[unit_type].capitalize()
 

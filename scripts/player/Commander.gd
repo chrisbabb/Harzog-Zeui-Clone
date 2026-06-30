@@ -23,16 +23,20 @@ const ROTATION_SPEED: float = 10.0
 const FUEL_DRAIN_AIR: float = 8.0
 const FUEL_DRAIN_GROUND: float = 2.0
 
-# Ammo cost/cooldown
-const AMMO_FIRE_COST: float = 5.0
-const FIRE_COOLDOWN: float = 0.35
+# Ammo cost/cooldown -- tuned so the commander is a genuine threat but can't
+# out-DPS a real army: GROUND mode's raw DPS (24/0.4 = 60) sits well above
+# any single unit's but is no longer ~4-5x the strongest unit, and a full
+# 80-ammo load now lasts ~13 shots instead of 16, tightening how long the
+# commander can solo-fight before needing to resupply (see BALANCE_NOTES.md).
+const AMMO_FIRE_COST: float = 6.0
+const FIRE_COOLDOWN: float = 0.4
 const AIR_FIRE_SPREAD_DEGREES: float = 6.0
 
 # AIR fires a faster, lighter, less accurate bolt that can hit anything;
 # GROUND fires a slower, harder-hitting one that only hits ground targets,
 # except an enemy commander caught hovering close by is fair game too.
-const AIR_MODE_DAMAGE: float = 18.0
-const GROUND_MODE_DAMAGE: float = 30.0
+const AIR_MODE_DAMAGE: float = 15.0
+const GROUND_MODE_DAMAGE: float = 24.0
 const AIR_MODE_PROJECTILE_SPEED: float = 45.0
 const GROUND_MODE_PROJECTILE_SPEED: float = 30.0
 const PROJECTILE_RANGE: float = 40.0

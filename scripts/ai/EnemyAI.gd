@@ -11,14 +11,9 @@ enum Difficulty { EASY, NORMAL, HARD }
 @export var difficulty: Difficulty = Difficulty.NORMAL
 @export var debug_logging: bool = false
 
-# Per-difficulty tuning tables indexed by Difficulty enum value.
-const _DECISION_INTERVALS: Array[float] = [5.0, 3.0, 1.5]
-const _BONUS_INCOME_PER_SEC: Array[float] = [0.0, 2.0, 6.0]
-const _WAVE_THRESHOLDS: Array[int] = [2, 3, 5]
-const _WAVE_INTERVALS: Array[float] = [36.0, 24.0, 15.0]
-
-# Distance from enemy HQ that counts as "under threat" from player units.
-const THREAT_RADIUS: float = 30.0
+# Per-difficulty tuning tables (decision interval, bonus income, wave
+# threshold/interval, HQ threat radius) live in Constants.gd as
+# Constants.AI_* alongside the rest of the balance-tuning constants.
 
 var _decision_timer: float = 0.0
 var _wave_timer: float = 0.0
@@ -27,26 +22,26 @@ var _wave_timer: float = 0.0
 func _ready() -> void:
 	difficulty = clamp(GameState.selected_difficulty, Difficulty.EASY, Difficulty.HARD)
 	# Stagger the first decision so buildings have registered with GameState.
-	_decision_timer = _DECISION_INTERVALS[difficulty]
-	_wave_timer = _WAVE_INTERVALS[difficulty]
+	_decision_timer = Constants.AI_DECISION_INTERVALS[difficulty]
+	_wave_timer = Constants.AI_WAVE_INTERVALS[difficulty]
 
 
 func _process(delta: float) -> void:
 	if not GameState.match_active:
 		return
 
-	var bonus: float = _BONUS_INCOME_PER_SEC[difficulty]
+	var bonus: float = Constants.AI_BONUS_INCOME_PER_SEC[difficulty]
 	if bonus > 0.0:
 		Economy.add_money(Constants.Team.ENEMY, bonus * delta)
 
 	_decision_timer -= delta
 	if _decision_timer <= 0.0:
-		_decision_timer = _DECISION_INTERVALS[difficulty]
+		_decision_timer = Constants.AI_DECISION_INTERVALS[difficulty]
 		_make_decisions()
 
 	_wave_timer -= delta
 	if _wave_timer <= 0.0:
-		_wave_timer = _WAVE_INTERVALS[difficulty]
+		_wave_timer = Constants.AI_WAVE_INTERVALS[difficulty]
 		_launch_wave()
 
 
@@ -187,7 +182,7 @@ func _choose_order_for(unit_type: int, owned_outposts: int, under_hq_threat: boo
 ## When enough combat units have accumulated, send them all at the player HQ
 ## simultaneously. Support/capture units are excluded so they stay on task.
 func _launch_wave() -> void:
-	var threshold: int = _WAVE_THRESHOLDS[difficulty]
+	var threshold: int = Constants.AI_WAVE_THRESHOLDS[difficulty]
 	var wave_units: Array[Node] = []
 
 	for unit in get_tree().get_nodes_in_group("units"):
@@ -221,7 +216,7 @@ func _is_hq_under_threat(all_units: Array) -> bool:
 	if GameState.enemy_hq == null or not is_instance_valid(GameState.enemy_hq):
 		return false
 	return TacticalDirector.get_enemy_pressure_near(
-		GameState.enemy_hq.global_position, THREAT_RADIUS, all_units
+		GameState.enemy_hq.global_position, Constants.AI_THREAT_RADIUS, all_units
 	) > 0
 
 

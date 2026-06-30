@@ -17,10 +17,13 @@ const ROTATION_SPEED: float = 6.0
 
 const FUEL_DRAIN_AIR: float = 8.0
 const FUEL_DRAIN_GROUND: float = 2.0
-const AMMO_FIRE_COST: float = 5.0
-const FIRE_COOLDOWN: float = 0.5
-const AIR_MODE_DAMAGE: float = 18.0
-const GROUND_MODE_DAMAGE: float = 30.0
+# Mirrors Commander.gd's damage/ammo tuning (see its comment for the
+# reasoning); FIRE_COOLDOWN is kept proportionally slower than the player's
+# 0.4s to preserve the existing AI-vs-player fire-rate handicap.
+const AMMO_FIRE_COST: float = 6.0
+const FIRE_COOLDOWN: float = 0.55
+const AIR_MODE_DAMAGE: float = 15.0
+const GROUND_MODE_DAMAGE: float = 24.0
 const AIR_MODE_PROJECTILE_SPEED: float = 45.0
 const GROUND_MODE_PROJECTILE_SPEED: float = 30.0
 const PROJECTILE_RANGE: float = 40.0

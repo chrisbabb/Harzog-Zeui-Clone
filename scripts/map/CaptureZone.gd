@@ -4,10 +4,6 @@ extends Area3D
 ## qualification (order/mode) live, since a body can change orders or
 ## transform mode while still standing inside the zone.
 
-const COMMANDER_CAPTURE_RATE: float = 0.6
-const CAPTURE_DRONE_CAPTURE_RATE: float = 2.0
-const UNIT_CAPTURE_RATE: float = 1.0
-
 var _occupants: Array[Node] = []
 
 
@@ -59,12 +55,15 @@ func _is_qualifying(body: Node) -> bool:
 	return false
 
 
+## Commanders capture at a fixed, deliberately middling rate (see
+## Constants.COMMANDER_CAPTURE_POWER); units use their own "capture_power"
+## balance stat from data/units.json instead, so e.g. Capture Drones clearly
+## outpace Scout Buggies, which in turn outpace units that just happen to be
+## standing in the zone (see BALANCE_NOTES.md).
 func _rate_for_body(body: Node) -> float:
 	if body == GameState.player_commander or body == GameState.enemy_commander:
-		return COMMANDER_CAPTURE_RATE
-	if body.get("unit_type") == Constants.UnitType.CAPTURE_DRONE:
-		return CAPTURE_DRONE_CAPTURE_RATE
-	return UNIT_CAPTURE_RATE
+		return Constants.COMMANDER_CAPTURE_POWER
+	return UnitDatabase.get_capture_power(body.get("unit_type"))
 
 
 func _on_body_entered(body: Node) -> void:

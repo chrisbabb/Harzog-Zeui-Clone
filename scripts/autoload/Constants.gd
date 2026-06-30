@@ -83,6 +83,15 @@ const DROP_RANGE: float = 5.0
 const CAPTURE_RADIUS: float = 6.0
 const OUTPOST_CAPTURE_TIME: float = 6.0
 
+# Outpost capture speed: CaptureZone.gd divides OUTPOST_CAPTURE_TIME by each
+# occupant's capture rate. Units use their own "capture_power" stat from
+# data/units.json (so e.g. Capture Drones are the fastest and Supply Trucks
+# the slowest); the commander instead uses this flat, deliberately middling
+# rate so it's a viable capturer in a pinch but never the optimal choice --
+# escorting a drone is always faster.
+const COMMANDER_CAPTURE_POWER: float = 0.6
+const DEFAULT_UNIT_CAPTURE_POWER: float = 1.0
+
 # Command menu order-changing: a unit's order can only be changed while it's
 # carried, or while the commander is in GROUND mode within this range of it.
 const ORDER_RANGE: float = 5.0
@@ -99,6 +108,27 @@ const ARMOR_DAMAGE_MULTIPLIERS: Dictionary = {
 	"medium": 0.85,
 	"heavy": 0.70,
 }
+
+# Enemy AI difficulty tuning, indexed by EnemyAI.Difficulty (EASY=0,
+# NORMAL=1, HARD=2). Centralized here rather than left as private consts on
+# EnemyAI.gd so every balance knob for the skirmish opponent lives in one
+# place. See BALANCE_NOTES.md for the reasoning behind each tier.
+#
+# Seconds between AI decision ticks (build/order evaluation) -- lower means
+# the AI reassesses the battlefield more often, reading as more aggressive.
+const AI_DECISION_INTERVALS: Array[float] = [5.0, 3.0, 1.5]
+# Flat bonus income/sec layered on top of the shared economy. Normal is kept
+# at 0 so it competes on equal economic footing with the player; only Hard
+# gets a deliberately slight edge rather than an overwhelming one.
+const AI_BONUS_INCOME_PER_SEC: Array[float] = [0.0, 0.0, 3.0]
+# Combat units required before a coordinated attack wave launches early.
+const AI_WAVE_THRESHOLDS: Array[int] = [2, 3, 5]
+# Max seconds between forced wave launches regardless of threshold -- keeps
+# Easy's pressure sparse and infrequent, Hard's pressure near-constant.
+const AI_WAVE_INTERVALS: Array[float] = [36.0, 24.0, 15.0]
+# Distance from the enemy HQ that counts as "under threat" from player
+# units, triggering a defensive unit-type bias regardless of difficulty.
+const AI_THREAT_RADIUS: float = 30.0
 
 # Shared brief flash applied to a body's material when it takes damage.
 const DAMAGE_FLASH_DURATION: float = 0.12
