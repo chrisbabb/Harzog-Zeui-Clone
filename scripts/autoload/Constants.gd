@@ -155,6 +155,11 @@ const ACTION_CONFIRM: String = "confirm"
 const ACTION_CANCEL: String = "cancel"
 const ACTION_PAUSE: String = "pause"
 const ACTION_MINIMAP_ZOOM: String = "minimap_zoom"
+const ACTION_CYCLE_ORDER: String = "cycle_order"
+const ACTION_AIM_RIGHT: String = "aim_right"
+const ACTION_AIM_LEFT: String = "aim_left"
+const ACTION_AIM_FORWARD: String = "aim_forward"
+const ACTION_AIM_BACK: String = "aim_back"
 
 # Battlefield dimensions
 const ARENA_LENGTH: float = 220.0

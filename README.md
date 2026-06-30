@@ -24,6 +24,8 @@ until real art is produced.
 
 ## Controls
 
+### Keyboard & Mouse
+
 | Action | Keyboard / Mouse |
 | --- | --- |
 | Move forward / back | `W` / `S` (or `Up` / `Down`) |
@@ -33,10 +35,29 @@ until real art is produced.
 | Pick up / drop unit | `Q` |
 | Open build menu | `B` |
 | Open command menu | `C` |
+| Cycle selected order | — |
 | Confirm | `Enter` or `Left Mouse` |
 | Cancel | `Esc` or `Right Mouse` |
 | Pause | `Esc` |
 | Minimap zoom | `Tab` |
+
+### Controller (Xbox / PlayStation)
+
+| Action | Button |
+| --- | --- |
+| Move commander | Left stick |
+| Aim / fire direction | Right stick |
+| Fire primary weapon | `A` / Cross |
+| Transform (ground ↔ air) | `B` / Circle |
+| Pick up / drop unit | `X` / Square |
+| Open command menu | `Y` / Triangle |
+| Open build menu | Left Bumper (LB / L1) |
+| Cycle selected order | Right Bumper (RB / R1) |
+| Navigate menus | D-pad |
+| Confirm | `A` / Cross |
+| Cancel | `B` / Circle |
+| Pause | Start |
+| Minimap zoom | Back / Select |
 
 All bindings are defined in **Project Settings → Input Map** and referenced
 in code through `scripts/autoload/Constants.gd`, so they can be remapped in

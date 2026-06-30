@@ -81,6 +81,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 		EventBus.build_menu_requested.emit()
 	elif Input.is_action_just_pressed(Constants.ACTION_OPEN_COMMAND_MENU):
 		EventBus.command_menu_requested.emit()
+	elif Input.is_action_just_pressed(Constants.ACTION_CYCLE_ORDER):
+		_cycle_selected_order()
+
+
+func _cycle_selected_order() -> void:
+	var order_count: int = Constants.UnitOrder.size()
+	GameState.selected_order = (GameState.selected_order + 1) % order_count
+	EventBus.hud_message.emit("Order: %s" % Constants.UNIT_ORDER_NAMES.get(GameState.selected_order, ""))
 
 
 func _on_money_changed(team: int, amount: float) -> void:

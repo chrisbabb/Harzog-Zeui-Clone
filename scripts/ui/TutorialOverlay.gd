@@ -39,17 +39,17 @@ const STEP_TITLES: Array[String] = [
 ]
 
 const STEP_BODIES: Array[String] = [
-	"Use W/A/S/D to move your commander. Move away from your starting spot to continue.",
-	"Press E to toggle your commander between GROUND and AIR mode. Try it now.",
+	"Use W/A/S/D or the left stick to move your commander. Move away from your starting spot to continue.",
+	"Press E (or B on controller) to toggle your commander between GROUND and AIR mode. Try it now.",
 	"Flying burns fuel fast. Return to your HQ (highlighted) -- standing nearby refuels you automatically.",
-	"Press B to open the Build Menu, where you spend credits on units.",
-	"While near your HQ, select the Capture Drone ([7]) in the Build Menu to purchase one.",
-	"Switch to AIR mode (E), fly to the new Capture Drone (highlighted), and press Q to pick it up.",
-	"Fly to the neutral outpost (highlighted) and press Q again to drop the drone right on top of it.",
-	"Switch to GROUND mode (E), land near the drone (highlighted), press C, and select Capture Nearest Outpost ([5]).",
+	"Press B (or LB on controller) to open the Build Menu, where you spend credits on units.",
+	"While near your HQ, select the Capture Drone ([7]) in the Build Menu to purchase one. Use D-pad or mouse to navigate.",
+	"Switch to AIR mode (E / B), fly to the new Capture Drone (highlighted), and press Q (or X) to pick it up.",
+	"Fly to the neutral outpost (highlighted) and press Q (or X) again to drop the drone right on top of it.",
+	"Switch to GROUND mode (E / B), land near the drone (highlighted), press C (or Y), and select Capture Nearest Outpost ([5]).",
 	"Wait while the Capture Drone secures the outpost (highlighted) for your team.",
-	"Open the Build Menu (B) near a friendly HQ or outpost and purchase a Tank ([2]).",
-	"Stand near your new Tank, press C, and select Attack Enemy HQ ([4]) to send it at the target dummy (highlighted).",
+	"Open the Build Menu (B / LB) near a friendly HQ or outpost and purchase a Tank ([2]).",
+	"Stand near your new Tank, press C (or Y), and select Attack Enemy HQ ([4]) to send it at the target dummy (highlighted).",
 	"Your Tank will engage automatically once in range. Wait for the target dummy (highlighted) to be destroyed.",
 	"You've learned movement, transforming, refueling, building, capturing, and combat. You're ready for a real skirmish!",
 ]

@@ -118,6 +118,10 @@ func _physics_process(delta: float) -> void:
 	var input_direction: Vector3 = _get_camera_relative_input()
 	_update_fuel(delta, input_direction != Vector3.ZERO)
 	_handle_movement(delta, input_direction)
+	var aim_direction: Vector3 = _get_camera_relative_aim()
+	if aim_direction != Vector3.ZERO:
+		var aim_angle: float = atan2(-aim_direction.x, -aim_direction.z)
+		rotation.y = lerp_angle(rotation.y, aim_angle, clamp(ROTATION_SPEED * delta, 0.0, 1.0))
 	global_position = NavigationManager.clamp_to_battlefield(global_position)
 	_update_height(delta)
 	_update_particle_visuals()
@@ -155,15 +159,17 @@ func _update_timers(delta: float) -> void:
 
 
 func _get_camera_relative_input() -> Vector3:
-	var raw_input := Vector2.ZERO
-	raw_input.x = Input.get_action_strength(Constants.ACTION_MOVE_RIGHT) - Input.get_action_strength(Constants.ACTION_MOVE_LEFT)
-	raw_input.y = Input.get_action_strength(Constants.ACTION_MOVE_BACK) - Input.get_action_strength(Constants.ACTION_MOVE_FORWARD)
-	if raw_input == Vector2.ZERO:
+	var raw_input := Vector2(
+		Input.get_action_strength(Constants.ACTION_MOVE_RIGHT) - Input.get_action_strength(Constants.ACTION_MOVE_LEFT),
+		Input.get_action_strength(Constants.ACTION_MOVE_BACK) - Input.get_action_strength(Constants.ACTION_MOVE_FORWARD)
+	)
+	if raw_input.length_squared() < 0.0001:
 		return Vector3.ZERO
 
 	var camera: Camera3D = get_viewport().get_camera_3d()
 	if camera == null:
-		return Vector3(raw_input.x, 0.0, raw_input.y).normalized()
+		var v := Vector3(raw_input.x, 0.0, raw_input.y)
+		return v / max(v.length(), 1.0)
 
 	var camera_basis: Basis = camera.global_transform.basis
 	var forward: Vector3 = -camera_basis.z
@@ -172,8 +178,32 @@ func _get_camera_relative_input() -> Vector3:
 	var right: Vector3 = camera_basis.x
 	right.y = 0.0
 	right = right.normalized()
+	var world_dir: Vector3 = (right * raw_input.x) + (forward * -raw_input.y)
+	if world_dir.length() > 1.0:
+		world_dir = world_dir.normalized()
+	return world_dir
 
-	return ((right * raw_input.x) + (forward * -raw_input.y)).normalized()
+
+func _get_camera_relative_aim() -> Vector3:
+	var raw_aim := Vector2(
+		Input.get_action_strength(Constants.ACTION_AIM_RIGHT) - Input.get_action_strength(Constants.ACTION_AIM_LEFT),
+		Input.get_action_strength(Constants.ACTION_AIM_BACK) - Input.get_action_strength(Constants.ACTION_AIM_FORWARD)
+	)
+	if raw_aim.length_squared() < 0.04:
+		return Vector3.ZERO
+
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if camera == null:
+		return Vector3(raw_aim.x, 0.0, raw_aim.y).normalized()
+
+	var camera_basis: Basis = camera.global_transform.basis
+	var forward: Vector3 = -camera_basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var right: Vector3 = camera_basis.x
+	right.y = 0.0
+	right = right.normalized()
+	return ((right * raw_aim.x) + (forward * -raw_aim.y)).normalized()
 
 
 func _handle_movement(delta: float, input_direction: Vector3) -> void:
@@ -186,7 +216,7 @@ func _handle_movement(delta: float, input_direction: Vector3) -> void:
 	velocity.y = 0.0
 	move_and_slide()
 
-	if input_direction != Vector3.ZERO:
+	if input_direction.length_squared() > 0.01:
 		var target_angle: float = atan2(-input_direction.x, -input_direction.z)
 		rotation.y = lerp_angle(rotation.y, target_angle, clamp(ROTATION_SPEED * delta, 0.0, 1.0))
 
@@ -395,8 +425,9 @@ func _pickup_nearest_unit() -> void:
 	var nearest: Node = null
 	var nearest_distance: float = Constants.PICKUP_RANGE
 
-	for unit in get_tree().get_nodes_in_group("units"):
-		if unit.get("team") != team or unit.get("is_destroyed"):
+	var group: String = "player_units" if team == Constants.Team.PLAYER else "enemy_units"
+	for unit in get_tree().get_nodes_in_group(group):
+		if unit.get("is_destroyed"):
 			continue
 		var distance: float = global_position.distance_to(unit.global_position)
 		if distance <= nearest_distance:
@@ -432,8 +463,9 @@ func get_reorderable_units() -> Array[Node]:
 	if mode != Constants.CommanderMode.GROUND:
 		return nearby
 
-	for unit in get_tree().get_nodes_in_group("units"):
-		if unit.get("team") == team and not unit.get("is_destroyed") and global_position.distance_to(unit.global_position) <= Constants.ORDER_RANGE:
+	var group: String = "player_units" if team == Constants.Team.PLAYER else "enemy_units"
+	for unit in get_tree().get_nodes_in_group(group):
+		if not unit.get("is_destroyed") and global_position.distance_to(unit.global_position) <= Constants.ORDER_RANGE:
 			nearby.append(unit)
 	return nearby
 

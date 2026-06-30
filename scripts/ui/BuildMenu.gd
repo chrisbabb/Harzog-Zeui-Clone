@@ -49,6 +49,8 @@ func toggle() -> void:
 func open() -> void:
 	visible = true
 	EventBus.audio_event_requested.emit("ui_select")
+	if not _buttons_by_type.is_empty():
+		_buttons_by_type.values()[0].grab_focus()
 
 
 func close() -> void:
