@@ -22,6 +22,9 @@ const ARTILLERY_PROJECTILE_SCALE: float = 1.8
 const HEALTH_BAR_HEIGHT: float = 2.6
 const HEALTH_BAR_SIZE: Vector3 = Vector3(1.2, 0.15, 0.05)
 const WRECK_FADE_DURATION: float = 5.0
+const TEAM_STRIP_OUTER_RADIUS: float = 0.95
+const TEAM_STRIP_INNER_RADIUS: float = 0.78
+const TEAM_STRIP_HEIGHT: float = 0.12
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/effects/Projectile.tscn")
 
 @export var team: int = Constants.Team.PLAYER
@@ -60,6 +63,7 @@ var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D = null
 var _health_bar_material: StandardMaterial3D
 var _wreck_remaining: float = 0.0
+var _team_strip: MeshInstance3D = null
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -74,6 +78,7 @@ func _ready() -> void:
 	_apply_detection_radius()
 	_create_order_label()
 	_create_health_bar()
+	_create_team_strip()
 	navigation_agent.path_desired_distance = 0.5
 	navigation_agent.target_desired_distance = Constants.UNIT_NAVIGATION_ARRIVAL_DISTANCE
 	detection_area.body_entered.connect(_on_detection_body_entered)
@@ -133,6 +138,8 @@ func die() -> void:
 	_order_label.visible = false
 	if _health_bar != null:
 		_health_bar.visible = false
+	if _team_strip != null:
+		_team_strip.visible = false
 	_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_wreck_remaining = WRECK_FADE_DURATION
 
@@ -512,6 +519,24 @@ func _update_health_bar() -> void:
 	_health_bar.visible = ratio < 1.0
 	if _health_bar.visible:
 		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
+
+
+## A thin glowing ring at the unit's base, team-colored and always-on so
+## allies/enemies read at a glance even from the angled isometric camera.
+func _create_team_strip() -> void:
+	_team_strip = MeshInstance3D.new()
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = TEAM_STRIP_INNER_RADIUS
+	mesh.outer_radius = TEAM_STRIP_OUTER_RADIUS
+	_team_strip.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.emission_enabled = true
+	material.albedo_color = Constants.team_color(team)
+	material.emission = Constants.team_color(team)
+	_team_strip.material_override = material
+	_team_strip.position = Vector3(0.0, TEAM_STRIP_HEIGHT, 0.0)
+	add_child(_team_strip)
 
 
 func _update_flash(delta: float) -> void:

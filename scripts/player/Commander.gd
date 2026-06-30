@@ -42,6 +42,21 @@ const MUZZLE_FLASH_DURATION: float = 0.08
 const MUZZLE_FLASH_SIZE: float = 0.35
 const MUZZLE_FLASH_COLOR: Color = Color(1.0, 0.9, 0.5)
 
+const CONTRAIL_PARTICLE_AMOUNT: int = 24
+const CONTRAIL_LIFETIME: float = 0.6
+const CONTRAIL_PARTICLE_SIZE: float = 0.18
+const CONTRAIL_COLOR: Color = Color(0.65, 0.85, 1.0, 0.55)
+
+const DUST_PARTICLE_AMOUNT: int = 16
+const DUST_LIFETIME: float = 0.5
+const DUST_PARTICLE_SIZE: float = 0.22
+const DUST_COLOR: Color = Color(0.55, 0.48, 0.35, 0.45)
+const DUST_MOVE_SPEED_THRESHOLD: float = 1.0
+
+const TEAM_STRIP_OUTER_RADIUS: float = 1.05
+const TEAM_STRIP_INNER_RADIUS: float = 0.85
+const TEAM_STRIP_HEIGHT: float = 0.1
+
 # Transform animation
 const SQUASH_SCALE: Vector3 = Vector3(1.3, 0.7, 1.3)
 
@@ -63,6 +78,8 @@ var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
 var _muzzle_flash: MeshInstance3D
 var _muzzle_flash_remaining: float = 0.0
+var _contrail_particles: GPUParticles3D
+var _dust_particles: GPUParticles3D
 
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var ground_mesh: MeshInstance3D = $MeshRoot/GroundMesh
@@ -72,6 +89,9 @@ var _muzzle_flash_remaining: float = 0.0
 func _ready() -> void:
 	_apply_team_color()
 	_create_muzzle_flash()
+	_create_team_strip()
+	_create_contrail_particles()
+	_create_dust_particles()
 	_update_mode_visuals()
 	EventBus.commander_mode_changed.emit(mode)
 	EventBus.commander_fuel_changed.emit(fuel)
@@ -96,6 +116,7 @@ func _physics_process(delta: float) -> void:
 	_handle_movement(delta, input_direction)
 	global_position = NavigationManager.clamp_to_battlefield(global_position)
 	_update_height(delta)
+	_update_particle_visuals()
 
 	if carried_unit != null:
 		carried_unit.global_position = global_position
@@ -258,6 +279,105 @@ func _update_muzzle_flash(delta: float) -> void:
 	_muzzle_flash_remaining -= delta
 	if _muzzle_flash_remaining <= 0.0:
 		_muzzle_flash.visible = false
+
+
+## A glowing team-colored ring at the commander's base, built in code like
+## the muzzle flash above so Commander.tscn stays untouched.
+func _create_team_strip() -> void:
+	var strip := MeshInstance3D.new()
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = TEAM_STRIP_INNER_RADIUS
+	mesh.outer_radius = TEAM_STRIP_OUTER_RADIUS
+	strip.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.emission_enabled = true
+	material.albedo_color = Constants.team_color(team)
+	material.emission = Constants.team_color(team)
+	strip.material_override = material
+	strip.position = Vector3(0.0, TEAM_STRIP_HEIGHT, 0.0)
+	add_child(strip)
+
+
+## AIR mode trails a faint contrail behind the jet; GROUND mode kicks up dust
+## while actually moving. Both are toggled per-frame in _update_particle_visuals
+## and use local_coords = false so emitted particles stay put in world space
+## instead of following the commander, producing a proper trailing look.
+func _create_contrail_particles() -> void:
+	_contrail_particles = GPUParticles3D.new()
+	_contrail_particles.amount = CONTRAIL_PARTICLE_AMOUNT
+	_contrail_particles.lifetime = CONTRAIL_LIFETIME
+	_contrail_particles.local_coords = false
+	_contrail_particles.emitting = false
+	_contrail_particles.draw_pass_1 = _build_particle_quad_mesh(CONTRAIL_PARTICLE_SIZE)
+	_contrail_particles.process_material = _build_trail_process_material(CONTRAIL_COLOR)
+	_contrail_particles.position = Vector3(0.0, 0.0, PROJECTILE_FORWARD_OFFSET)
+	add_child(_contrail_particles)
+
+
+func _create_dust_particles() -> void:
+	_dust_particles = GPUParticles3D.new()
+	_dust_particles.amount = DUST_PARTICLE_AMOUNT
+	_dust_particles.lifetime = DUST_LIFETIME
+	_dust_particles.local_coords = false
+	_dust_particles.emitting = false
+	_dust_particles.draw_pass_1 = _build_particle_quad_mesh(DUST_PARTICLE_SIZE)
+	_dust_particles.process_material = _build_dust_process_material(DUST_COLOR)
+	_dust_particles.position = Vector3(0.0, -GROUND_HEIGHT, 0.0)
+	add_child(_dust_particles)
+
+
+func _update_particle_visuals() -> void:
+	_contrail_particles.emitting = mode == Constants.CommanderMode.AIR
+	var ground_speed: float = Vector3(velocity.x, 0.0, velocity.z).length()
+	_dust_particles.emitting = mode == Constants.CommanderMode.GROUND and ground_speed > DUST_MOVE_SPEED_THRESHOLD
+
+
+func _build_particle_quad_mesh(size: float) -> QuadMesh:
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(size, size)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.vertex_color_use_as_albedo = true
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mesh.material = material
+	return mesh
+
+
+func _build_trail_process_material(color: Color) -> ParticleProcessMaterial:
+	var material := ParticleProcessMaterial.new()
+	material.direction = Vector3(0.0, 0.0, 1.0)
+	material.spread = 10.0
+	material.initial_velocity_min = 1.0
+	material.initial_velocity_max = 2.5
+	material.gravity = Vector3.ZERO
+	material.scale_min = 0.6
+	material.scale_max = 1.2
+	material.color_ramp = _build_fade_gradient(color)
+	return material
+
+
+func _build_dust_process_material(color: Color) -> ParticleProcessMaterial:
+	var material := ParticleProcessMaterial.new()
+	material.direction = Vector3(0.0, 1.0, 0.0)
+	material.spread = 50.0
+	material.initial_velocity_min = 0.5
+	material.initial_velocity_max = 1.5
+	material.gravity = Vector3(0.0, -1.0, 0.0)
+	material.scale_min = 0.5
+	material.scale_max = 1.0
+	material.color_ramp = _build_fade_gradient(color)
+	return material
+
+
+func _build_fade_gradient(color: Color) -> GradientTexture1D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, color)
+	gradient.set_color(1, Color(color.r, color.g, color.b, 0.0))
+	var texture := GradientTexture1D.new()
+	texture.gradient = gradient
+	return texture
 
 
 func _toggle_pickup_drop() -> void:

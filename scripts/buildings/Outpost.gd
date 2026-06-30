@@ -9,6 +9,11 @@ const RELOAD_RATE: float = 4.0
 const DELIVERY_DELAY: float = 2.5
 const HEALTH_BAR_HEIGHT: float = 5.3
 const HEALTH_BAR_SIZE: Vector3 = Vector3(2.4, 0.25, 0.25)
+const RING_ROTATION_SPEED: float = 0.4
+const RING_PULSE_SPEED: float = 6.0
+const RING_PULSE_SCALE: float = 0.08
+const RING_PULSE_EMISSION_BASE: float = 1.5
+const RING_PULSE_EMISSION_AMPLITUDE: float = 0.5
 
 ## Outposts can only produce lighter/support units, unlike the HQ which builds everything.
 const BUILDABLE_UNIT_TYPES: Array[int] = [
@@ -36,6 +41,7 @@ var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
+var _ring_material: StandardMaterial3D
 
 @onready var tower_mesh: MeshInstance3D = $TowerMesh
 @onready var ring_mesh: MeshInstance3D = $RingMesh
@@ -64,6 +70,7 @@ func _physics_process(delta: float) -> void:
 	_update_delivery(delta)
 	_update_flash(delta)
 	_update_health_bar()
+	_update_ring_animation(delta)
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
@@ -102,9 +109,15 @@ func update_team_material() -> void:
 	if _body_material == null:
 		_body_material = StandardMaterial3D.new()
 		tower_mesh.material_override = _body_material
-		ring_mesh.material_override = _body_material
+	if _ring_material == null:
+		_ring_material = StandardMaterial3D.new()
+		_ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_ring_material.emission_enabled = true
+		ring_mesh.material_override = _ring_material
 	_body_material.albedo_color = Constants.team_color(team)
 	_health_bar_material.albedo_color = Constants.team_color(team)
+	_ring_material.albedo_color = Constants.team_color(team)
+	_ring_material.emission = Constants.team_color(team)
 
 
 func can_produce(unit_type: int) -> bool:
@@ -262,3 +275,20 @@ func _update_flash(delta: float) -> void:
 		return
 	_flash_remaining -= delta
 	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
+
+
+## Ring always turns slowly so a contested outpost reads as "alive" even
+## when idle; it additionally pulses brighter/larger while actively being
+## captured (a capturing team exists and the zone isn't deadlocked/contested).
+func _update_ring_animation(delta: float) -> void:
+	ring_mesh.rotate_y(RING_ROTATION_SPEED * delta)
+
+	var being_captured: bool = capture_zone.get_capturing_team() != -1 and not capture_zone.is_contested()
+	if not being_captured:
+		ring_mesh.scale = Vector3.ONE
+		_ring_material.emission_energy_multiplier = 1.0
+		return
+
+	var pulse: float = sin(Time.get_ticks_msec() / 1000.0 * RING_PULSE_SPEED)
+	ring_mesh.scale = Vector3.ONE * (1.0 + pulse * RING_PULSE_SCALE)
+	_ring_material.emission_energy_multiplier = RING_PULSE_EMISSION_BASE + pulse * RING_PULSE_EMISSION_AMPLITUDE

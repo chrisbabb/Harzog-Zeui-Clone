@@ -9,6 +9,15 @@ extends Node3D
 const EXPLOSION_SCENE: PackedScene = preload("res://scenes/effects/Explosion.tscn")
 const ARC_HEIGHT: float = 4.0
 
+## Projectiles use punchier, more saturated colors than the muted team-strip
+## color so shots stand out against the battlefield: player bolts read as
+## blue/cyan, enemy bolts as red/orange. Artillery shells additionally glow
+## brighter so their larger, slower-arcing shot reads as more powerful.
+const PLAYER_PROJECTILE_COLOR: Color = Color(0.35, 0.85, 1.0)
+const ENEMY_PROJECTILE_COLOR: Color = Color(1.0, 0.55, 0.15)
+const DEFAULT_EMISSION_ENERGY: float = 1.4
+const ARCING_EMISSION_ENERGY: float = 2.2
+
 var team: int = Constants.Team.PLAYER
 var damage: float = 10.0
 var speed: float = 30.0
@@ -47,8 +56,10 @@ func _initialize() -> void:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.emission_enabled = true
-	material.albedo_color = Constants.team_color(team)
-	material.emission = Constants.team_color(team)
+	var color: Color = _projectile_color()
+	material.albedo_color = color
+	material.emission = color
+	material.emission_energy_multiplier = ARCING_EMISSION_ENERGY if is_arcing else DEFAULT_EMISSION_ENERGY
 	mesh_instance.material_override = material
 
 
@@ -85,6 +96,10 @@ func _is_valid_target(body: Node) -> bool:
 		return false
 	var is_air_target: bool = _is_airborne_commander(body)
 	return can_hit_air if is_air_target else can_hit_ground
+
+
+func _projectile_color() -> Color:
+	return PLAYER_PROJECTILE_COLOR if team == Constants.Team.PLAYER else ENEMY_PROJECTILE_COLOR
 
 
 func _is_airborne_commander(body: Node) -> bool:
