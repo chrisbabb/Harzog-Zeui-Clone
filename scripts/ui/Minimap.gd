@@ -13,6 +13,7 @@ const _HQ_RECT: float = 9.0
 
 
 func _ready() -> void:
+	_zoom_index = clamp(SaveManager.minimap_size, 0, _zoom_levels.size() - 1)
 	world_extent = _zoom_levels[_zoom_index]
 
 
@@ -28,6 +29,8 @@ func _unhandled_input(_event: InputEvent) -> void:
 func _cycle_zoom() -> void:
 	_zoom_index = (_zoom_index + 1) % _zoom_levels.size()
 	world_extent = _zoom_levels[_zoom_index]
+	SaveManager.minimap_size = _zoom_index
+	SaveManager.save_settings()
 
 
 func _draw() -> void:

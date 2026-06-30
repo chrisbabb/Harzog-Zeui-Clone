@@ -25,6 +25,7 @@ var _wave_timer: float = 0.0
 
 
 func _ready() -> void:
+	difficulty = clamp(SaveManager.difficulty, Difficulty.EASY, Difficulty.HARD)
 	# Stagger the first decision so buildings have registered with GameState.
 	_decision_timer = _DECISION_INTERVALS[difficulty]
 	_wave_timer = _WAVE_INTERVALS[difficulty]

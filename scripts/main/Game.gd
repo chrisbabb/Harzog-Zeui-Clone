@@ -9,6 +9,7 @@ const COMMANDER_SCENE: PackedScene = preload("res://scenes/player/Commander.tscn
 const ENEMY_COMMANDER_SCENE: PackedScene = preload("res://scenes/player/EnemyCommander.tscn")
 const COMMANDER_SPAWN_OFFSET: Vector3 = Vector3(8.0, 0.0, 0.0)
 const COMMANDER_RESPAWN_TIME: float = 15.0
+const SHAKE_DECAY_PER_SEC: float = 6.0
 
 @onready var world_root: Node3D = $WorldRoot
 @onready var camera_rig: Node3D = $CameraRig
@@ -16,14 +17,18 @@ const COMMANDER_RESPAWN_TIME: float = 15.0
 var commander: Node3D = null
 var _player_respawn_timer: float = 0.0
 var _enemy_respawn_timer: float = 0.0
+var _follow_position: Vector3 = Vector3.ZERO
+var _shake_strength: float = 0.0
 
 
 func _ready() -> void:
 	EventBus.commander_died.connect(_on_commander_died)
+	EventBus.camera_shake_requested.connect(_on_camera_shake_requested)
 	MapGenerator.generate_battlefield(self)
 	_spawn_commander()
 	_spawn_enemy_commander()
-	camera_rig.global_position = _clamp_to_arena(commander.global_position)
+	_follow_position = _clamp_to_arena(commander.global_position)
+	camera_rig.global_position = _follow_position
 	GameState.start_match()
 
 
@@ -33,7 +38,8 @@ func _process(delta: float) -> void:
 	if commander != null:
 		var target: Vector3 = _clamp_to_arena(commander.global_position)
 		var follow_factor: float = clamp(delta * Constants.CAMERA_FOLLOW_SPEED, 0.0, 1.0)
-		camera_rig.global_position = camera_rig.global_position.lerp(target, follow_factor)
+		_follow_position = _follow_position.lerp(target, follow_factor)
+	camera_rig.global_position = _follow_position + _shake_offset(delta)
 
 	if _player_respawn_timer > 0.0:
 		_player_respawn_timer -= delta
@@ -78,3 +84,18 @@ func _clamp_to_arena(world_position: Vector3) -> Vector3:
 		0.0,
 		clamp(world_position.z, -half_width, half_width)
 	)
+
+
+func _on_camera_shake_requested(strength: float) -> void:
+	if SaveManager.camera_shake:
+		_shake_strength = max(_shake_strength, strength)
+
+
+## Decaying random jitter added on top of the smoothed follow position.
+## Kept separate from _follow_position so the shake itself never gets fed
+## back into the lerp on the next frame.
+func _shake_offset(delta: float) -> Vector3:
+	if _shake_strength <= 0.0:
+		return Vector3.ZERO
+	_shake_strength = max(0.0, _shake_strength - SHAKE_DECAY_PER_SEC * delta)
+	return Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)) * _shake_strength

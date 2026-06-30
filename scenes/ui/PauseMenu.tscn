@@ -38,6 +38,9 @@ text = "Resume"
 [node name="RestartButton" type="Button" parent="Panel/VBoxContainer"]
 text = "Restart Match"
 
+[node name="OptionsButton" type="Button" parent="Panel/VBoxContainer"]
+text = "Options"
+
 [node name="MainMenuButton" type="Button" parent="Panel/VBoxContainer"]
 text = "Quit to Main Menu"
 

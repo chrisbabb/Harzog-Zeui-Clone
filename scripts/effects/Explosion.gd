@@ -17,6 +17,9 @@ const SPARK_PARTICLE_SIZE: float = 0.15
 const SPARK_LIFETIME: float = 0.45
 const SPARK_COLOR: Color = Color(1.0, 0.8, 0.4)
 
+const SHAKE_STRENGTH_SMALL: float = 0.15
+const SHAKE_STRENGTH_LARGE: float = 0.4
+
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 
 var _material: StandardMaterial3D
@@ -47,6 +50,7 @@ func setup(is_large: bool) -> void:
 	_sparks.amount = SPARK_AMOUNT_LARGE if is_large else SPARK_AMOUNT_SMALL
 	_sparks.emitting = true
 	EventBus.audio_event_requested.emit("explosion_large" if is_large else "explosion_small")
+	EventBus.camera_shake_requested.emit(SHAKE_STRENGTH_LARGE if is_large else SHAKE_STRENGTH_SMALL)
 
 
 func _process(delta: float) -> void:

@@ -36,7 +36,6 @@ theme_override_font_sizes/font_size = 22
 text = "Start Skirmish"
 
 [node name="OptionsButton" type="Button" parent="Panel/VBoxContainer"]
-disabled = true
 text = "Options"
 
 [node name="QuitButton" type="Button" parent="Panel/VBoxContainer"]

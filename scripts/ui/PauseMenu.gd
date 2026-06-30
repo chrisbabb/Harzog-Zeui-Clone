@@ -2,9 +2,11 @@ extends Control
 ## Pause menu: resume, restart the current match, return to main menu, or quit.
 
 const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/MainMenu.tscn"
+const OPTIONS_MENU_SCENE: PackedScene = preload("res://scenes/ui/OptionsMenu.tscn")
 
 @onready var resume_button: Button = $Panel/VBoxContainer/ResumeButton
 @onready var restart_button: Button = $Panel/VBoxContainer/RestartButton
+@onready var options_button: Button = $Panel/VBoxContainer/OptionsButton
 @onready var main_menu_button: Button = $Panel/VBoxContainer/MainMenuButton
 @onready var quit_button: Button = $Panel/VBoxContainer/QuitButton
 
@@ -14,6 +16,7 @@ func _ready() -> void:
 	visible = false
 	resume_button.pressed.connect(_on_resume_pressed)
 	restart_button.pressed.connect(_on_restart_pressed)
+	options_button.pressed.connect(_on_options_pressed)
 	main_menu_button.pressed.connect(_on_main_menu_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 
@@ -44,6 +47,11 @@ func _on_restart_pressed() -> void:
 	GameState.reset_match_state()
 	Economy.reset()
 	get_tree().reload_current_scene()
+
+
+func _on_options_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_select")
+	add_child(OPTIONS_MENU_SCENE.instantiate())
 
 
 func _on_main_menu_pressed() -> void:
