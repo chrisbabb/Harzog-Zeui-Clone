@@ -45,10 +45,12 @@ func toggle() -> void:
 
 func open() -> void:
 	visible = true
+	EventBus.audio_event_requested.emit("ui_select")
 
 
 func close() -> void:
 	visible = false
+	EventBus.audio_event_requested.emit("ui_cancel")
 
 
 func _populate_options() -> void:
@@ -85,6 +87,7 @@ func _attempt_purchase(unit_type: int) -> void:
 	if not _commander_alive():
 		return
 
+	EventBus.audio_event_requested.emit("ui_select")
 	GameState.selected_unit_type = unit_type
 	var commander: Node = GameState.player_commander
 	var building: Node = GameState.get_nearest_friendly_production_building(Constants.Team.PLAYER, commander.global_position)

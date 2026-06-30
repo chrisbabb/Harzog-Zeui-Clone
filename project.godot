@@ -22,6 +22,7 @@ Constants="*res://scripts/autoload/Constants.gd"
 EventBus="*res://scripts/autoload/EventBus.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 Economy="*res://scripts/autoload/Economy.gd"
+AudioManager="*res://scripts/autoload/AudioManager.gd"
 
 [display]
 

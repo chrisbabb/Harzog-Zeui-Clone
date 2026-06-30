@@ -42,10 +42,12 @@ func toggle() -> void:
 
 func open() -> void:
 	visible = true
+	EventBus.audio_event_requested.emit("ui_select")
 
 
 func close() -> void:
 	visible = false
+	EventBus.audio_event_requested.emit("ui_cancel")
 
 
 func _populate_options() -> void:
@@ -60,6 +62,7 @@ func _populate_options() -> void:
 ## immediately apply it to every unit the commander can currently reorder
 ## (the carried unit, or nearby grounded units -- see Commander.gd).
 func _attempt_select_order(order: int) -> void:
+	EventBus.audio_event_requested.emit("ui_select")
 	GameState.selected_order = order
 
 	var commander: Node = GameState.player_commander

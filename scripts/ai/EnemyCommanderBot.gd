@@ -437,6 +437,7 @@ func _try_fire(target_pos: Vector3) -> void:
 	_fire_cooldown = FIRE_COOLDOWN
 	_spawn_projectile(target_pos)
 	_trigger_muzzle_flash()
+	EventBus.audio_event_requested.emit("commander_fire")
 
 
 func _spawn_projectile(target_pos: Vector3) -> void:

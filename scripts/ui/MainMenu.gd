@@ -11,13 +11,16 @@ func _ready() -> void:
 	start_button.pressed.connect(_on_start_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	start_button.grab_focus()
+	AudioManager.play_music(AudioManager.MusicTrack.MENU)
 
 
 func _on_start_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_select")
 	GameState.reset_match_state()
 	Economy.reset()
 	get_tree().change_scene_to_file(GAME_SCENE_PATH)
 
 
 func _on_quit_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_cancel")
 	get_tree().quit()

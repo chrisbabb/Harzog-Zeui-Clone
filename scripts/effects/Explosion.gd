@@ -46,6 +46,7 @@ func setup(is_large: bool) -> void:
 	_material.emission = color
 	_sparks.amount = SPARK_AMOUNT_LARGE if is_large else SPARK_AMOUNT_SMALL
 	_sparks.emitting = true
+	EventBus.audio_event_requested.emit("explosion_large" if is_large else "explosion_small")
 
 
 func _process(delta: float) -> void:

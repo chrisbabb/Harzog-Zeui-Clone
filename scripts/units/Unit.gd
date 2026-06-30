@@ -296,6 +296,7 @@ func _fire_at(target: Node) -> void:
 	ammo -= AMMO_PER_SHOT
 	attack_cooldown = fire_rate
 	_spawn_projectile(target)
+	EventBus.audio_event_requested.emit("unit_fire")
 
 
 ## Artillery lobs a slower, larger, visually arcing shell; everyone else

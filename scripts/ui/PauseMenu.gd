@@ -33,11 +33,13 @@ func _toggle_pause() -> void:
 
 
 func _on_resume_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_cancel")
 	visible = false
 	get_tree().paused = false
 
 
 func _on_restart_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_select")
 	get_tree().paused = false
 	GameState.reset_match_state()
 	Economy.reset()
@@ -45,6 +47,7 @@ func _on_restart_pressed() -> void:
 
 
 func _on_main_menu_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_cancel")
 	get_tree().paused = false
 	GameState.reset_match_state()
 	Economy.reset()
@@ -52,4 +55,5 @@ func _on_main_menu_pressed() -> void:
 
 
 func _on_quit_pressed() -> void:
+	EventBus.audio_event_requested.emit("ui_cancel")
 	get_tree().quit()

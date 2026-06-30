@@ -443,6 +443,7 @@ func _try_fire() -> void:
 	_fire_cooldown_remaining = FIRE_COOLDOWN
 	_spawn_projectile()
 	_trigger_muzzle_flash()
+	EventBus.audio_event_requested.emit("commander_fire")
 
 
 func _spawn_projectile() -> void:
