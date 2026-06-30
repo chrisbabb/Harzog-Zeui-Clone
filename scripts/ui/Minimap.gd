@@ -99,6 +99,10 @@ func _draw_commander() -> void:
 	if commander != null and is_instance_valid(commander):
 		draw_circle(_world_to_minimap(commander.global_position), _COMMANDER_RADIUS, Color(0.4, 0.85, 1.0))
 
+	var enemy_cmd: Node = GameState.enemy_commander
+	if enemy_cmd != null and is_instance_valid(enemy_cmd):
+		draw_circle(_world_to_minimap(enemy_cmd.global_position), _COMMANDER_RADIUS, Constants.COLOR_ENEMY)
+
 
 func _world_to_minimap(world_pos: Vector3) -> Vector2:
 	var normalized: Vector2 = Vector2(world_pos.x, world_pos.z) / world_extent

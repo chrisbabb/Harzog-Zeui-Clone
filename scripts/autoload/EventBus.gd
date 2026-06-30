@@ -18,6 +18,7 @@ signal building_destroyed(building: Node)
 signal commander_mode_changed(mode: int)
 signal commander_fuel_changed(value: float)
 signal commander_ammo_changed(value: float)
+signal commander_died(commander: Node)
 
 signal match_started
 signal match_ended(winning_team: int)

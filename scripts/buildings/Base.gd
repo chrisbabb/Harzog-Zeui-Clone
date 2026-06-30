@@ -68,7 +68,8 @@ func refuel_commander(commander: Node, delta: float) -> void:
 		return
 	var new_fuel: float = min(Constants.MAX_PLAYER_FUEL, fuel + REFUEL_RATE * delta)
 	commander.set("fuel", new_fuel)
-	EventBus.commander_fuel_changed.emit(new_fuel)
+	if commander.get("team") == Constants.Team.PLAYER:
+		EventBus.commander_fuel_changed.emit(new_fuel)
 
 
 func reload_commander(commander: Node, delta: float) -> void:
@@ -77,7 +78,8 @@ func reload_commander(commander: Node, delta: float) -> void:
 		return
 	var new_ammo: float = min(Constants.MAX_PLAYER_AMMO, ammo + RELOAD_RATE * delta)
 	commander.set("ammo", new_ammo)
-	EventBus.commander_ammo_changed.emit(new_ammo)
+	if commander.get("team") == Constants.Team.PLAYER:
+		EventBus.commander_ammo_changed.emit(new_ammo)
 
 
 func can_produce(_unit_type: int) -> bool:

@@ -56,6 +56,7 @@ var fuel: float = Constants.MAX_PLAYER_FUEL
 var ammo: float = Constants.MAX_PLAYER_AMMO
 var carried_unit: Node = null
 
+var _is_dead: bool = false
 var _transform_locked_remaining: float = 0.0
 var _fire_cooldown_remaining: float = 0.0
 var _body_material: StandardMaterial3D
@@ -107,10 +108,14 @@ func take_damage(amount: float, attacker: Node = null) -> void:
 
 
 func die() -> void:
+	if _is_dead:
+		return
+	_is_dead = true
 	if team == Constants.Team.PLAYER:
 		GameState.player_commander = null
 	else:
 		GameState.enemy_commander = null
+	EventBus.commander_died.emit(self)
 	queue_free()
 
 
