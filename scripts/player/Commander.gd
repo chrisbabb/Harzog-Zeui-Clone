@@ -94,6 +94,7 @@ func _physics_process(delta: float) -> void:
 	var input_direction: Vector3 = _get_camera_relative_input()
 	_update_fuel(delta, input_direction != Vector3.ZERO)
 	_handle_movement(delta, input_direction)
+	global_position = NavigationManager.clamp_to_battlefield(global_position)
 	_update_height(delta)
 
 	if carried_unit != null:

@@ -9,6 +9,9 @@ const SLOW_SPEED_MULTIPLIER: float = 0.35
 const FUEL_DRAIN_RATE: float = 3.0
 const AMMO_PER_SHOT: float = 1.0
 const DIRECT_STEER_EPSILON: float = 0.05
+const SEPARATION_RADIUS: float = 2.5
+const SEPARATION_STRENGTH: float = 1.0
+const DESTINATION_JITTER_RADIUS: float = 1.5
 const SUPPLY_REPAIR_RATE: float = 10.0
 const SUPPLY_REFUEL_RATE: float = 8.0
 const SUPPLY_RELOAD_RATE: float = 3.0
@@ -325,24 +328,27 @@ func _resupply(body: Node, delta: float) -> void:
 
 
 func _update_movement(delta: float) -> void:
-	if navigation_agent.is_navigation_finished():
+	if navigation_agent.is_navigation_finished() and _is_near_nav_target():
 		velocity = Vector3.ZERO
 		move_and_slide()
+		_clamp_to_battlefield()
 		if not _was_navigation_finished:
 			_refresh_order_target()
 		_was_navigation_finished = true
 		return
 
 	_was_navigation_finished = false
-	var direction: Vector3 = _steering_direction(navigation_agent.get_next_path_position())
-	if direction == Vector3.ZERO:
+	var direction: Vector3 = _steering_direction(navigation_agent.get_next_path_position()) + _separation_offset()
+	if direction.length() <= DIRECT_STEER_EPSILON:
 		velocity = Vector3.ZERO
 		move_and_slide()
+		_clamp_to_battlefield()
 		return
 
 	var current_speed: float = speed if fuel > 0.0 else speed * SLOW_SPEED_MULTIPLIER
-	velocity = direction * current_speed
+	velocity = direction.normalized() * current_speed
 	move_and_slide()
+	_clamp_to_battlefield()
 	_update_fuel(delta)
 
 
@@ -360,12 +366,101 @@ func _steering_direction(next_path_position: Vector3) -> Vector3:
 	return to_target.normalized() if to_target.length() > DIRECT_STEER_EPSILON else Vector3.ZERO
 
 
+## True once actually within arrival distance of the nav target. Paired with
+## is_navigation_finished() in _update_movement(): NavigationAgent3D can
+## report "finished" immediately if the navmesh isn't baked/synced yet
+## (bake_navigation_mesh() runs on a background thread), which would
+## otherwise stall the unit in place forever. When that happens this returns
+## false and movement falls through to the direct-steering branch instead.
+func _is_near_nav_target() -> bool:
+	var to_target: Vector3 = navigation_agent.target_position - global_position
+	to_target.y = 0.0
+	return to_target.length() <= navigation_agent.target_desired_distance + DIRECT_STEER_EPSILON
+
+
+## Nudges away from nearby friendly units so a group doesn't compress into a
+## single stacked point; only checked against teammates since positioning
+## relative to enemies is handled by combat/formation targeting instead.
+func _separation_offset() -> Vector3:
+	var offset := Vector3.ZERO
+	for other in get_tree().get_nodes_in_group("units"):
+		if other == self or not is_instance_valid(other):
+			continue
+		if other.get("team") != team or other.get("is_destroyed") or other.get("is_carried"):
+			continue
+		var away: Vector3 = global_position - other.global_position
+		away.y = 0.0
+		var distance: float = away.length()
+		if distance > 0.001 and distance < SEPARATION_RADIUS:
+			offset += away.normalized() * ((SEPARATION_RADIUS - distance) / SEPARATION_RADIUS) * SEPARATION_STRENGTH
+	return offset
+
+
+func _clamp_to_battlefield() -> void:
+	global_position = NavigationManager.clamp_to_battlefield(global_position)
+
+
 func _update_fuel(delta: float) -> void:
 	fuel = max(0.0, fuel - FUEL_DRAIN_RATE * delta)
 
 
 func _refresh_order_target() -> void:
-	navigation_agent.target_position = UnitOrder.resolve_movement_target(self)
+	var target: Vector3 = UnitOrder.resolve_movement_target(self)
+
+	if current_order == Constants.UnitOrder.HOLD_POSITION:
+		navigation_agent.target_position = NavigationManager.clamp_to_battlefield(target)
+		return
+
+	if current_order == Constants.UnitOrder.CAPTURE_OUTPOST and is_instance_valid(order_target_building):
+		target = NavigationManager.get_valid_ground_position_near(order_target_building.global_position, Constants.CAPTURE_RADIUS)
+	elif current_order == Constants.UnitOrder.ATTACK_BASE and is_instance_valid(order_target_building):
+		target = _formation_attack_target(order_target_building.global_position)
+	else:
+		# Slight random offset so units sharing an order (patrol, defend,
+		# support, advance-to-point) don't all converge on the exact same spot.
+		target = NavigationManager.get_random_point_near(target, DESTINATION_JITTER_RADIUS)
+
+	navigation_agent.target_position = NavigationManager.clamp_to_battlefield(target)
+
+
+## Spreads simultaneous HQ-attackers into a front/middle/rear formation
+## instead of all beelining to the same point: tanks/heavy walkers lead,
+## missile crawlers/anti-air hold the middle, artillery/supply trail behind.
+func _formation_attack_target(hq_position: Vector3) -> Vector3:
+	var wave: Array[Node] = []
+	for other in get_tree().get_nodes_in_group("units"):
+		if not is_instance_valid(other) or other.get("is_destroyed"):
+			continue
+		if other.get("team") != team or other.get("current_order") != Constants.UnitOrder.ATTACK_BASE:
+			continue
+		wave.append(other)
+
+	wave.sort_custom(_compare_formation_order)
+	var index: int = wave.find(self)
+	if index == -1:
+		return hq_position
+
+	var facing: Vector3 = hq_position - global_position
+	var positions: Array[Vector3] = NavigationManager.get_formation_positions(hq_position, wave.size(), facing)
+	return positions[index] if index < positions.size() else hq_position
+
+
+func _compare_formation_order(a: Node, b: Node) -> bool:
+	var rank_a: int = _formation_rank(a.get("unit_type"))
+	var rank_b: int = _formation_rank(b.get("unit_type"))
+	if rank_a != rank_b:
+		return rank_a < rank_b
+	return a.get_instance_id() < b.get_instance_id()
+
+
+func _formation_rank(type: int) -> int:
+	match type:
+		Constants.UnitType.TANK, Constants.UnitType.HEAVY_WALKER:
+			return 0
+		Constants.UnitType.ARTILLERY, Constants.UnitType.SUPPLY_TRUCK:
+			return 2
+		_:
+			return 1
 
 
 ## Unit scenes vary in how many visual parts they have (hull, turret,

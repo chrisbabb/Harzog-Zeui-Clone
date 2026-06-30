@@ -44,14 +44,7 @@ static func _resolve_patrol_target(unit: Node) -> Vector3:
 		anchor = unit.global_position
 		unit.set("order_target_position", anchor)
 
-	return _random_offset_within(anchor, PATROL_RADIUS)
-
-
-static func _random_offset_within(anchor: Vector3, radius: float) -> Vector3:
-	var offset := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
-	if offset == Vector3.ZERO:
-		return anchor
-	return anchor + offset.normalized() * randf_range(0.0, radius)
+	return NavigationManager.get_random_point_near(anchor, PATROL_RADIUS)
 
 
 static func _resolve_enemy_hq_target(unit: Node) -> Vector3:
@@ -86,7 +79,7 @@ static func _resolve_outpost_target(unit: Node, want_own_team: bool) -> Vector3:
 
 	# Defenders patrol around their outpost rather than parking on its center.
 	if want_own_team:
-		return _random_offset_within(building.global_position, DEFEND_PATROL_RADIUS)
+		return NavigationManager.get_random_point_near(building.global_position, DEFEND_PATROL_RADIUS)
 	return building.global_position
 
 

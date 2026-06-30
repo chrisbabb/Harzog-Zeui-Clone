@@ -87,6 +87,7 @@ func _physics_process(delta: float) -> void:
 	_update_timers(delta)
 	_drain_fuel(delta)
 	_tick_ai(delta)
+	global_position = NavigationManager.clamp_to_battlefield(global_position)
 	_update_height(delta)
 	_update_flash(delta)
 	_update_muzzle_flash(delta)
