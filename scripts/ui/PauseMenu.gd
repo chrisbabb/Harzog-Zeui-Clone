@@ -1,9 +1,10 @@
 extends Control
-## Placeholder pause menu: resume, return to main menu, or quit.
+## Pause menu: resume, restart the current match, return to main menu, or quit.
 
 const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/MainMenu.tscn"
 
 @onready var resume_button: Button = $Panel/VBoxContainer/ResumeButton
+@onready var restart_button: Button = $Panel/VBoxContainer/RestartButton
 @onready var main_menu_button: Button = $Panel/VBoxContainer/MainMenuButton
 @onready var quit_button: Button = $Panel/VBoxContainer/QuitButton
 
@@ -12,6 +13,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
 	resume_button.pressed.connect(_on_resume_pressed)
+	restart_button.pressed.connect(_on_restart_pressed)
 	main_menu_button.pressed.connect(_on_main_menu_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 
@@ -35,9 +37,17 @@ func _on_resume_pressed() -> void:
 	get_tree().paused = false
 
 
+func _on_restart_pressed() -> void:
+	get_tree().paused = false
+	GameState.reset_match_state()
+	Economy.reset()
+	get_tree().reload_current_scene()
+
+
 func _on_main_menu_pressed() -> void:
 	get_tree().paused = false
 	GameState.reset_match_state()
+	Economy.reset()
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE_PATH)
 
 

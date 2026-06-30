@@ -14,9 +14,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -180.0
-offset_top = -140.0
+offset_top = -165.0
 offset_right = 180.0
-offset_bottom = 140.0
+offset_bottom = 165.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
 anchor_right = 1.0
@@ -35,8 +35,11 @@ text = "Paused"
 [node name="ResumeButton" type="Button" parent="Panel/VBoxContainer"]
 text = "Resume"
 
+[node name="RestartButton" type="Button" parent="Panel/VBoxContainer"]
+text = "Restart Match"
+
 [node name="MainMenuButton" type="Button" parent="Panel/VBoxContainer"]
-text = "Main Menu"
+text = "Quit to Main Menu"
 
 [node name="QuitButton" type="Button" parent="Panel/VBoxContainer"]
 text = "Quit"

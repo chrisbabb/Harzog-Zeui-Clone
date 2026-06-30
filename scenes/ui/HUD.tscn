@@ -14,34 +14,203 @@ mouse_filter = 2
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="TopBar" type="HBoxContainer" parent="Root"]
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 560.0
-offset_bottom = 56.0
-theme_override_constants/separation = 12
+[node name="TopLeft" type="Panel" parent="Root"]
+mouse_filter = 2
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 264.0
+offset_bottom = 110.0
 
-[node name="ResourceLabel" type="Label" parent="Root/TopBar"]
-text = "Resources: 0"
+[node name="M" type="MarginContainer" parent="Root/TopLeft"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
 
-[node name="BuildMenuButton" type="Button" parent="Root/TopBar"]
-text = "Build (B)"
+[node name="Box" type="VBoxContainer" parent="Root/TopLeft/M"]
+theme_override_constants/separation = 3
 
-[node name="CommandMenuButton" type="Button" parent="Root/TopBar"]
-text = "Commands (C)"
+[node name="CreditsLabel" type="Label" parent="Root/TopLeft/M/Box"]
+text = "Credits: 800"
 
-[node name="StatusBar" type="VBoxContainer" parent="Root"]
-offset_left = 16.0
-offset_top = 64.0
-offset_right = 560.0
-offset_bottom = 120.0
+[node name="IncomeLabel" type="Label" parent="Root/TopLeft/M/Box"]
+text = "Income: +8/s"
+
+[node name="OutpostsLabel" type="Label" parent="Root/TopLeft/M/Box"]
+text = "Outposts: 0"
+
+[node name="TopCenter" type="Panel" parent="Root"]
+mouse_filter = 2
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -210.0
+offset_top = 12.0
+offset_right = 210.0
+offset_bottom = 78.0
+
+[node name="M" type="MarginContainer" parent="Root/TopCenter"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Box" type="VBoxContainer" parent="Root/TopCenter/M"]
+theme_override_constants/separation = 2
+
+[node name="TimerLabel" type="Label" parent="Root/TopCenter/M/Box"]
+horizontal_alignment = 1
+text = "00:00"
+
+[node name="ObjectiveLabel" type="Label" parent="Root/TopCenter/M/Box"]
+horizontal_alignment = 1
+text = "Capture outposts and destroy the enemy HQ."
+theme_override_font_sizes/font_size = 11
+
+[node name="TopRight" type="Panel" parent="Root"]
+mouse_filter = 2
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -284.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 136.0
+
+[node name="M" type="MarginContainer" parent="Root/TopRight"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Box" type="VBoxContainer" parent="Root/TopRight/M"]
+theme_override_constants/separation = 5
+
+[node name="EnemyHQLabel" type="Label" parent="Root/TopRight/M/Box"]
+text = "Enemy HQ: 3000/3000"
+
+[node name="EnemyHQBar" type="ProgressBar" parent="Root/TopRight/M/Box"]
+custom_minimum_size = Vector2(0.0, 14.0)
+show_percentage = false
+max_value = 3000.0
+value = 3000.0
+
+[node name="PlayerHQLabel" type="Label" parent="Root/TopRight/M/Box"]
+text = "Your HQ: 3000/3000"
+
+[node name="PlayerHQBar" type="ProgressBar" parent="Root/TopRight/M/Box"]
+custom_minimum_size = Vector2(0.0, 14.0)
+show_percentage = false
+max_value = 3000.0
+value = 3000.0
+
+[node name="CommanderPanel" type="Panel" parent="Root"]
+mouse_filter = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -244.0
+offset_right = 276.0
+offset_bottom = -12.0
+
+[node name="M" type="MarginContainer" parent="Root/CommanderPanel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Box" type="VBoxContainer" parent="Root/CommanderPanel/M"]
+theme_override_constants/separation = 6
+
+[node name="PanelTitle" type="Label" parent="Root/CommanderPanel/M/Box"]
+text = "COMMANDER"
+
+[node name="ModeLabel" type="Label" parent="Root/CommanderPanel/M/Box"]
+text = "Mode: GROUND"
+
+[node name="HPRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box"]
+theme_override_constants/separation = 8
+
+[node name="HPLabel" type="Label" parent="Root/CommanderPanel/M/Box/HPRow"]
+custom_minimum_size = Vector2(44.0, 0.0)
+text = "HP"
+
+[node name="HPBar" type="ProgressBar" parent="Root/CommanderPanel/M/Box/HPRow"]
+custom_minimum_size = Vector2(0.0, 14.0)
+size_flags_horizontal = 3
+show_percentage = false
+max_value = 500.0
+value = 500.0
+
+[node name="FuelRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box"]
+theme_override_constants/separation = 8
+
+[node name="FuelLabel" type="Label" parent="Root/CommanderPanel/M/Box/FuelRow"]
+custom_minimum_size = Vector2(44.0, 0.0)
+text = "Fuel"
+
+[node name="FuelBar" type="ProgressBar" parent="Root/CommanderPanel/M/Box/FuelRow"]
+custom_minimum_size = Vector2(0.0, 14.0)
+size_flags_horizontal = 3
+show_percentage = false
+max_value = 100.0
+value = 100.0
+
+[node name="AmmoRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box"]
+theme_override_constants/separation = 8
+
+[node name="AmmoLabel" type="Label" parent="Root/CommanderPanel/M/Box/AmmoRow"]
+custom_minimum_size = Vector2(44.0, 0.0)
+text = "Ammo"
+
+[node name="AmmoBar" type="ProgressBar" parent="Root/CommanderPanel/M/Box/AmmoRow"]
+custom_minimum_size = Vector2(0.0, 14.0)
+size_flags_horizontal = 3
+show_percentage = false
+max_value = 80.0
+value = 80.0
+
+[node name="CarryingLabel" type="Label" parent="Root/CommanderPanel/M/Box"]
+text = "Carrying: None"
+
+[node name="BottomCenter" type="Panel" parent="Root"]
+mouse_filter = 2
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -108.0
+offset_right = 220.0
+offset_bottom = -12.0
+
+[node name="M" type="MarginContainer" parent="Root/BottomCenter"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Box" type="VBoxContainer" parent="Root/BottomCenter/M"]
 theme_override_constants/separation = 4
 
-[node name="FeedbackLabel" type="Label" parent="Root/StatusBar"]
+[node name="SelectedUnitLabel" type="Label" parent="Root/BottomCenter/M/Box"]
+horizontal_alignment = 1
 text = ""
 
-[node name="QueueLabel" type="Label" parent="Root/StatusBar"]
-visible = false
+[node name="SelectedOrderLabel" type="Label" parent="Root/BottomCenter/M/Box"]
+horizontal_alignment = 1
+text = ""
+
+[node name="FeedbackLabel" type="Label" parent="Root/BottomCenter/M/Box"]
+horizontal_alignment = 1
 text = ""
 
 [node name="Minimap" parent="." instance=ExtResource("2")]
@@ -51,8 +220,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -220.0
 offset_top = -220.0
-offset_right = -16.0
-offset_bottom = -16.0
+offset_right = -12.0
+offset_bottom = -12.0
 
 [node name="BuildMenu" parent="." instance=ExtResource("3")]
 visible = false
@@ -62,3 +231,91 @@ visible = false
 
 [node name="PauseMenu" parent="." instance=ExtResource("5")]
 visible = false
+
+[node name="MatchEnd" type="Control" parent="."]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Background" type="ColorRect" parent="MatchEnd"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.65)
+
+[node name="Panel" type="Panel" parent="MatchEnd"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -220.0
+offset_right = 280.0
+offset_bottom = 220.0
+
+[node name="M" type="MarginContainer" parent="MatchEnd/Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Box" type="VBoxContainer" parent="MatchEnd/Panel/M"]
+alignment = 1
+theme_override_constants/separation = 14
+
+[node name="ResultLabel" type="Label" parent="MatchEnd/Panel/M/Box"]
+horizontal_alignment = 1
+text = "VICTORY"
+theme_override_font_sizes/font_size = 28
+
+[node name="Sep1" type="HSeparator" parent="MatchEnd/Panel/M/Box"]
+
+[node name="Stats" type="GridContainer" parent="MatchEnd/Panel/M/Box"]
+columns = 2
+theme_override_constants/h_separation = 28
+theme_override_constants/v_separation = 5
+
+[node name="TimeKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "Time Elapsed:"
+
+[node name="TimeLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "00:00"
+
+[node name="BuiltKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "Units Built:"
+
+[node name="BuiltLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "0"
+
+[node name="LostKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "Units Lost:"
+
+[node name="LostLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "0"
+
+[node name="DestroyedKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "Units Destroyed:"
+
+[node name="DestroyedLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "0"
+
+[node name="CapturedKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "Outposts Captured:"
+
+[node name="CapturedLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
+text = "0"
+
+[node name="Sep2" type="HSeparator" parent="MatchEnd/Panel/M/Box"]
+
+[node name="Buttons" type="HBoxContainer" parent="MatchEnd/Panel/M/Box"]
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="RematchButton" type="Button" parent="MatchEnd/Panel/M/Box/Buttons"]
+custom_minimum_size = Vector2(120.0, 0.0)
+text = "Rematch"
+
+[node name="MainMenuButton" type="Button" parent="MatchEnd/Panel/M/Box/Buttons"]
+custom_minimum_size = Vector2(120.0, 0.0)
+text = "Main Menu"
