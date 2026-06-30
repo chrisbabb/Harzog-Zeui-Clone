@@ -22,6 +22,7 @@ var _shake_strength: float = 0.0
 
 
 func _ready() -> void:
+	Engine.time_scale = Constants.MATCH_SPEED_MULTIPLIERS.get(GameState.selected_match_speed, 1.0)
 	EventBus.commander_died.connect(_on_commander_died)
 	EventBus.camera_shake_requested.connect(_on_camera_shake_requested)
 	MapGenerator.generate_battlefield(self)

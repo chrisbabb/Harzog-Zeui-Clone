@@ -34,6 +34,15 @@ enum UnitOrder {
 # Building categories
 enum BuildingType { HQ, OUTPOST }
 
+# Skirmish setup: map layout presets and match speed options
+enum MapPreset { GREEN_DIVIDE, IRON_BASIN, ASH_LINE }
+enum MatchSpeed { NORMAL, FAST }
+
+const MATCH_SPEED_MULTIPLIERS: Dictionary = {
+	MatchSpeed.NORMAL: 1.0,
+	MatchSpeed.FAST: 1.5,
+}
+
 # Display names for UnitOrder, shared by the command menu and HUD/build menu feedback
 const UNIT_ORDER_NAMES: Dictionary = {
 	UnitOrder.HOLD_POSITION: "Hold Position",

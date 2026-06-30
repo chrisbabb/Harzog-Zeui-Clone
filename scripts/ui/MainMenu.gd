@@ -1,7 +1,7 @@
 extends Control
 ## Placeholder main menu: start a match or quit the game.
 
-const GAME_SCENE_PATH: String = "res://scenes/main/Game.tscn"
+const SKIRMISH_SETUP_SCENE_PATH: String = "res://scenes/ui/SkirmishSetup.tscn"
 const OPTIONS_MENU_SCENE: PackedScene = preload("res://scenes/ui/OptionsMenu.tscn")
 
 @onready var start_button: Button = $Panel/VBoxContainer/StartButton
@@ -10,6 +10,9 @@ const OPTIONS_MENU_SCENE: PackedScene = preload("res://scenes/ui/OptionsMenu.tsc
 
 
 func _ready() -> void:
+	# Defensive reset -- a match left running at Fast speed must not leak its
+	# time scale into the menu or the next match.
+	Engine.time_scale = 1.0
 	start_button.pressed.connect(_on_start_pressed)
 	options_button.pressed.connect(_on_options_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
@@ -19,9 +22,7 @@ func _ready() -> void:
 
 func _on_start_pressed() -> void:
 	EventBus.audio_event_requested.emit("ui_select")
-	GameState.reset_match_state()
-	Economy.reset()
-	get_tree().change_scene_to_file(GAME_SCENE_PATH)
+	get_tree().change_scene_to_file(SKIRMISH_SETUP_SCENE_PATH)
 
 
 func _on_options_pressed() -> void:

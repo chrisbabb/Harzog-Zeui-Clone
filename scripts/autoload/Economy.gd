@@ -14,8 +14,8 @@ func _process(delta: float) -> void:
 
 
 func reset() -> void:
-	player_money = Constants.STARTING_MONEY
-	enemy_money = Constants.STARTING_MONEY
+	player_money = GameState.selected_starting_credits
+	enemy_money = GameState.selected_starting_credits
 
 
 func get_money(team: int) -> float:

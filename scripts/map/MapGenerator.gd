@@ -7,40 +7,99 @@ extends RefCounted
 const HQ_SCENE: PackedScene = preload("res://scenes/buildings/Base.tscn")
 const OUTPOST_SCENE: PackedScene = preload("res://scenes/buildings/Outpost.tscn")
 
-const PLAYER_HQ_POSITION: Vector3 = Vector3(-90.0, 0.0, 0.0)
-const ENEMY_HQ_POSITION: Vector3 = Vector3(90.0, 0.0, 0.0)
-
-## Hand-placed rather than mirrored, so neither side reads as a perfect
-## reflection of the other: 3 near player, 3 middle, 3 near enemy.
-const OUTPOST_POSITIONS: Array[Vector3] = [
-	Vector3(-55.0, 0.0, -32.0),
-	Vector3(-50.0, 0.0, 4.0),
-	Vector3(-60.0, 0.0, 28.0),
-	Vector3(-9.0, 0.0, -35.0),
-	Vector3(6.0, 0.0, 3.0),
-	Vector3(10.0, 0.0, 32.0),
-	Vector3(52.0, 0.0, -29.0),
-	Vector3(58.0, 0.0, 6.0),
-	Vector3(48.0, 0.0, 34.0),
-]
+## One layout per Constants.MapPreset. "outposts" lists are priority-ordered
+## (highest-priority first) so generate_battlefield() can slice the first N
+## for whatever GameState.selected_outpost_count was chosen (5/7/9) while
+## keeping each map's character -- e.g. Iron Basin's middle cluster stays
+## first so its outposts read as "strong middle" even at the lowest count.
+const MAP_LAYOUTS: Dictionary = {
+	# Balanced, open central field: hand-placed rather than mirrored, so
+	# neither side reads as a perfect reflection of the other.
+	Constants.MapPreset.GREEN_DIVIDE: {
+		"player_hq": Vector3(-90.0, 0.0, 0.0),
+		"enemy_hq": Vector3(90.0, 0.0, 0.0),
+		"outposts": [
+			Vector3(6.0, 0.0, 3.0),
+			Vector3(-50.0, 0.0, 4.0),
+			Vector3(58.0, 0.0, 6.0),
+			Vector3(-9.0, 0.0, -35.0),
+			Vector3(10.0, 0.0, 32.0),
+			Vector3(-55.0, 0.0, -32.0),
+			Vector3(52.0, 0.0, -29.0),
+			Vector3(-60.0, 0.0, 28.0),
+			Vector3(48.0, 0.0, 34.0),
+		],
+		"obstacles": [
+			Vector3(-30.0, 0.0, -18.0),
+			Vector3(-20.0, 0.0, 22.0),
+			Vector3(25.0, 0.0, -20.0),
+			Vector3(32.0, 0.0, 18.0),
+			Vector3(0.0, 0.0, -12.0),
+		],
+	},
+	# More obstacles, strong middle outposts: HQs pulled in slightly so the
+	# crowded, obstacle-heavy center is reachable early and worth fighting for.
+	Constants.MapPreset.IRON_BASIN: {
+		"player_hq": Vector3(-85.0, 0.0, 0.0),
+		"enemy_hq": Vector3(85.0, 0.0, 0.0),
+		"outposts": [
+			Vector3(-12.0, 0.0, -14.0),
+			Vector3(14.0, 0.0, -10.0),
+			Vector3(-10.0, 0.0, 16.0),
+			Vector3(16.0, 0.0, 18.0),
+			Vector3(-58.0, 0.0, -22.0),
+			Vector3(58.0, 0.0, -20.0),
+			Vector3(-56.0, 0.0, 24.0),
+			Vector3(56.0, 0.0, 26.0),
+			Vector3(0.0, 0.0, -34.0),
+		],
+		"obstacles": [
+			Vector3(-30.0, 0.0, -8.0),
+			Vector3(-28.0, 0.0, 20.0),
+			Vector3(30.0, 0.0, -6.0),
+			Vector3(28.0, 0.0, 22.0),
+			Vector3(0.0, 0.0, -26.0),
+			Vector3(0.0, 0.0, 30.0),
+			Vector3(-45.0, 0.0, 4.0),
+			Vector3(45.0, 0.0, 2.0),
+			Vector3(5.0, 0.0, -2.0),
+		],
+	},
+	# Long, narrow battlefield: HQs pushed apart, outposts confined to a
+	# tight central band so the frontline forms fast and stays aggressive.
+	Constants.MapPreset.ASH_LINE: {
+		"player_hq": Vector3(-100.0, 0.0, 0.0),
+		"enemy_hq": Vector3(100.0, 0.0, 0.0),
+		"outposts": [
+			Vector3(0.0, 0.0, -8.0),
+			Vector3(0.0, 0.0, 10.0),
+			Vector3(-30.0, 0.0, -14.0),
+			Vector3(30.0, 0.0, 12.0),
+			Vector3(-30.0, 0.0, 14.0),
+			Vector3(30.0, 0.0, -12.0),
+			Vector3(-60.0, 0.0, -10.0),
+			Vector3(60.0, 0.0, 8.0),
+			Vector3(62.0, 0.0, -16.0),
+		],
+		"obstacles": [
+			Vector3(-40.0, 0.0, -22.0),
+			Vector3(-40.0, 0.0, 22.0),
+			Vector3(40.0, 0.0, -22.0),
+			Vector3(40.0, 0.0, 22.0),
+		],
+	},
+}
 
 const GRID_STEP: float = 20.0
 const GRID_HEIGHT: float = 0.06
 const GRID_COLOR: Color = Color(0.35, 0.45, 0.38)
 
-## A handful of low ridges/rocks scattered in the open lanes between
-## buildings -- physical blockers only (not carved into the navmesh), so
-## ground units/the grounded commander collide and slide around them via
-## move_and_slide() while the airborne commander (collision_mask = 0) flies
-## straight over. Kept sparse and well clear of HQs/outposts so pathfinding
-## never has to route around a maze, just nudge around a few rocks.
-const OBSTACLE_POSITIONS: Array[Vector3] = [
-	Vector3(-30.0, 0.0, -18.0),
-	Vector3(-20.0, 0.0, 22.0),
-	Vector3(25.0, 0.0, -20.0),
-	Vector3(32.0, 0.0, 18.0),
-	Vector3(0.0, 0.0, -12.0),
-]
+## Low ridges/rocks scattered in the open lanes between buildings, positions
+## taken from each map's MAP_LAYOUTS entry -- physical blockers only (not
+## carved into the navmesh), so ground units/the grounded commander collide
+## and slide around them via move_and_slide() while the airborne commander
+## (collision_mask = 0) flies straight over. Kept well clear of HQs/outposts
+## so pathfinding never has to route around a maze, just nudge around rocks.
 const OBSTACLE_RADIUS: float = 4.0
 const OBSTACLE_HEIGHT: float = 2.2
 const OBSTACLE_COLOR: Color = Color(0.42, 0.38, 0.34)
@@ -54,14 +113,6 @@ const ZONE_THICKNESS: float = 0.02
 const ZONE_GRASS_COLOR: Color = Color(0.28, 0.36, 0.24)
 const ZONE_METAL_COLOR: Color = Color(0.33, 0.35, 0.39)
 
-## Lane indices into OUTPOST_POSITIONS: positions 0/3/6 share one Z band,
-## 1/4/7 another, 2/5/8 a third (see the "3 near player, 3 middle, 3 near
-## enemy" comment above) -- each band reads as a road from HQ to HQ.
-const ROAD_LANES: Array[Array] = [
-	[0, 3, 6],
-	[1, 4, 7],
-	[2, 5, 8],
-]
 const ROAD_WIDTH: float = 5.0
 const ROAD_HEIGHT: float = ZONE_THICKNESS * 2.0
 const ROAD_COLOR: Color = Color(0.15, 0.15, 0.17)
@@ -76,17 +127,27 @@ static func generate_battlefield(game_root: Node3D) -> void:
 	var buildings_root: Node3D = world_root.get_node("BuildingsRoot")
 	var effects_root: Node3D = world_root.get_node("EffectsRoot")
 
+	var layout: Dictionary = MAP_LAYOUTS.get(
+		GameState.selected_map, MAP_LAYOUTS[Constants.MapPreset.GREEN_DIVIDE]
+	)
+	var player_hq_position: Vector3 = layout["player_hq"]
+	var enemy_hq_position: Vector3 = layout["enemy_hq"]
+	var all_outposts: Array = layout["outposts"]
+	var outpost_count: int = clamp(GameState.selected_outpost_count, 1, all_outposts.size())
+	var outpost_positions: Array = all_outposts.slice(0, outpost_count)
+	var obstacle_positions: Array = layout["obstacles"]
+
 	world_root.add_child(_build_terrain_zones())
-	world_root.add_child(_build_roads())
-	world_root.add_child(_build_rocky_patches())
+	world_root.add_child(_build_roads(player_hq_position, enemy_hq_position, outpost_positions))
+	world_root.add_child(_build_rocky_patches(obstacle_positions))
 
-	buildings_root.add_child(create_hq(Constants.Team.PLAYER, PLAYER_HQ_POSITION))
-	buildings_root.add_child(create_hq(Constants.Team.ENEMY, ENEMY_HQ_POSITION))
+	buildings_root.add_child(create_hq(Constants.Team.PLAYER, player_hq_position))
+	buildings_root.add_child(create_hq(Constants.Team.ENEMY, enemy_hq_position))
 
-	for outpost_position in OUTPOST_POSITIONS:
+	for outpost_position in outpost_positions:
 		buildings_root.add_child(create_outpost(outpost_position))
 
-	for obstacle_position in OBSTACLE_POSITIONS:
+	for obstacle_position in obstacle_positions:
 		world_root.add_child(create_obstacle(obstacle_position))
 
 	effects_root.add_child(_build_grid_overlay())
@@ -153,20 +214,21 @@ static func _build_terrain_zones() -> Node3D:
 	return root
 
 
-## Darker road strips connecting each HQ to its outposts along the three
-## lanes described by ROAD_LANES, sitting just above the plains zones.
-static func _build_roads() -> Node3D:
+## Darker road strips, sitting just above the plains zones: one spine
+## connecting the two HQs directly, plus one spur from each outpost to
+## whichever HQ it's closer to. Agnostic to outpost count/position, so it
+## works the same for every map layout and every outpost-count slice.
+static func _build_roads(player_hq_position: Vector3, enemy_hq_position: Vector3, outpost_positions: Array) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Roads"
 
-	for lane in ROAD_LANES:
-		var points: Array[Vector3] = [PLAYER_HQ_POSITION]
-		for outpost_index in lane:
-			points.append(OUTPOST_POSITIONS[outpost_index])
-		points.append(ENEMY_HQ_POSITION)
+	root.add_child(_build_road_segment(player_hq_position, enemy_hq_position))
 
-		for i in range(points.size() - 1):
-			root.add_child(_build_road_segment(points[i], points[i + 1]))
+	for outpost_position in outpost_positions:
+		var nearest_hq: Vector3 = player_hq_position
+		if outpost_position.distance_to(enemy_hq_position) < outpost_position.distance_to(player_hq_position):
+			nearest_hq = enemy_hq_position
+		root.add_child(_build_road_segment(outpost_position, nearest_hq))
 
 	return root
 
@@ -186,11 +248,11 @@ static func _build_road_segment(start: Vector3, end: Vector3) -> MeshInstance3D:
 
 ## Tints the ground beneath each physical obstacle so the blocked, rocky
 ## areas read clearly from the angled camera, without affecting collision.
-static func _build_rocky_patches() -> Node3D:
+static func _build_rocky_patches(obstacle_positions: Array) -> Node3D:
 	var root := Node3D.new()
 	root.name = "RockyPatches"
 
-	for obstacle_position in OBSTACLE_POSITIONS:
+	for obstacle_position in obstacle_positions:
 		var center: Vector3 = obstacle_position + Vector3(0.0, ROCKY_HEIGHT * 0.5, 0.0)
 
 		var material := StandardMaterial3D.new()

@@ -18,6 +18,15 @@ var selected_order: int = Constants.UnitOrder.HOLD_POSITION
 
 var winner: int = -1
 
+# Skirmish setup: chosen once on the setup screen, then read by MapGenerator,
+# Economy, EnemyAI, and Game for the whole match. Intentionally left out of
+# reset_match_state() so a "Restart Match" keeps the player's chosen settings.
+var selected_map: int = Constants.MapPreset.GREEN_DIVIDE
+var selected_difficulty: int = 1 # Normal
+var selected_starting_credits: int = Constants.STARTING_MONEY
+var selected_match_speed: int = Constants.MatchSpeed.NORMAL
+var selected_outpost_count: int = 7
+
 
 func _process(delta: float) -> void:
 	if match_active:
@@ -72,6 +81,14 @@ func get_nearest_friendly_production_building(team: int, position: Vector3) -> N
 
 func get_enemy_team(team: int) -> int:
 	return Constants.Team.ENEMY if team == Constants.Team.PLAYER else Constants.Team.PLAYER
+
+
+func configure_skirmish(map: int, difficulty: int, starting_credits: int, match_speed: int, outpost_count: int) -> void:
+	selected_map = map
+	selected_difficulty = difficulty
+	selected_starting_credits = starting_credits
+	selected_match_speed = match_speed
+	selected_outpost_count = outpost_count
 
 
 func reset_match_state() -> void:
