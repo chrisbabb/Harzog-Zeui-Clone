@@ -32,6 +32,13 @@ var selected_outpost_count: int = 7
 var game_mode: int = Constants.GameMode.SINGLE_PLAYER
 var split_direction: int = Constants.SplitDirection.VERTICAL
 
+## Seeds TerrainVisualGenerator's RNG so a given match's decoration layout
+## (rocks, wrecks, roads-adjacent clutter, ...) is reproducible -- same seed,
+## same battlefield dressing. Assigned fresh in configure_skirmish() but,
+## like the fields above, intentionally left out of reset_match_state() so
+## a "Restart Match" regenerates the identical layout rather than a new one.
+var map_seed: int = 0
+
 # Per-player UI selections; P1 uses selected_*, P2 uses p2_selected_*
 var p2_selected_unit_type: int = Constants.UnitType.SCOUT_BUGGY
 var p2_selected_order: int = Constants.UnitOrder.HOLD_POSITION
@@ -123,6 +130,7 @@ func configure_skirmish(map: int, difficulty: int, starting_credits: int, match_
 	selected_outpost_count = outpost_count
 	game_mode = mode
 	split_direction = split
+	map_seed = randi()
 
 
 func get_selected_unit_type(team: int) -> int:
