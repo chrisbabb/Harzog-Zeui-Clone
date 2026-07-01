@@ -32,6 +32,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 
+	# Two CommandMenu instances can be open at once in local multiplayer (one
+	# per player); without this filter, a keyboard hotkey from P1 would also
+	# reorder in P2's currently-open menu, and vice versa with a joypad
+	# Cancel press. Mirrors the same filter in HUD.gd/BuildMenu.gd.
+	if GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER:
+		var is_joy_event: bool = event is InputEventJoypadButton or event is InputEventJoypadMotion
+		if team == Constants.Team.PLAYER and is_joy_event:
+			return
+		if team == Constants.Team.ENEMY and not is_joy_event:
+			return
+
 	if Input.is_action_just_pressed(Constants.ACTION_CANCEL):
 		close()
 		return

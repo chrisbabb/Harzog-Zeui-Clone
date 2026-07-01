@@ -88,6 +88,7 @@ func _process(delta: float) -> void:
 		_update_commander_panel()
 		_update_hq_bars()
 		_update_selected_labels()
+		_refresh_outpost_display()
 
 
 func _unhandled_input(event: InputEvent) -> void:

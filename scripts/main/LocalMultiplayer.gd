@@ -146,12 +146,13 @@ func _add_viewport_half(parent: BoxContainer, team: int) -> Node3D:
 	var hud: Node = HUD_SCENE.instantiate()
 	hud.set("team", team)
 	if team == Constants.Team.ENEMY:
-		var build_menu: Node = hud.get_node_or_null("BuildMenu")
-		if build_menu:
-			build_menu.set("team", team)
-		var command_menu: Node = hud.get_node_or_null("CommandMenu")
-		if command_menu:
-			command_menu.set("team", team)
+		# BuildMenu/CommandMenu/PauseMenu/Minimap all filter input by device
+		# (keyboard vs. joypad) once their team matches this HUD's -- see the
+		# matching filter in HUD.gd's own _unhandled_input.
+		for child_name in ["BuildMenu", "CommandMenu", "PauseMenu", "Minimap"]:
+			var child: Node = hud.get_node_or_null(child_name)
+			if child:
+				child.set("team", team)
 	viewport.add_child(hud)
 
 	return camera_rig

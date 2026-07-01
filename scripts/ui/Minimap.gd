@@ -1,7 +1,12 @@
 extends Control
 ## Minimap showing units, buildings, commander, and camera viewport rectangle.
+## In local multiplayer each player's HUD embeds its own Minimap instance.
 
 @export var world_extent: float = 60.0
+
+# Which player this Minimap belongs to; set to ENEMY for P2 in local
+# multiplayer so its input filtering matches its sibling HUD's.
+@export var team: int = Constants.Team.PLAYER
 
 var _zoom_levels: Array[float] = [60.0, 40.0, 20.0]
 var _zoom_index: int = 0
@@ -27,7 +32,17 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
-func _unhandled_input(_event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	# Two Minimap instances exist in local multiplayer (one per player);
+	# without this filter either player's zoom button would cycle both.
+	# Mirrors the same filter in HUD.gd/BuildMenu.gd/CommandMenu.gd.
+	if GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER:
+		var is_joy_event: bool = event is InputEventJoypadButton or event is InputEventJoypadMotion
+		if team == Constants.Team.PLAYER and is_joy_event:
+			return
+		if team == Constants.Team.ENEMY and not is_joy_event:
+			return
+
 	if Input.is_action_just_pressed(Constants.ACTION_MINIMAP_ZOOM):
 		_cycle_zoom()
 

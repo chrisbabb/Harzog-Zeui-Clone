@@ -2,7 +2,8 @@
 .godot/
 .import/
 export.cfg
-export_presets.cfg
+# export_presets.cfg is intentionally tracked -- it defines the Windows
+# Desktop export target for this project (see README.md "How to export").
 
 # Imported translations (automatically generated from CSV files)
 *.translation

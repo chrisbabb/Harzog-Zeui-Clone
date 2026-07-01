@@ -30,6 +30,11 @@ func _on_start_pressed() -> void:
 
 func _on_tutorial_pressed() -> void:
 	EventBus.audio_event_requested.emit("ui_select")
+	# Set before the scene change (not left to Tutorial.gd's own _ready()) --
+	# Godot fires a child's _ready() before its parent's, so HUD._ready()
+	# would otherwise read a stale LOCAL_MULTIPLAYER left over from a
+	# previous match before Tutorial.gd got a chance to reset it.
+	GameState.game_mode = Constants.GameMode.SINGLE_PLAYER
 	get_tree().change_scene_to_file(TUTORIAL_SCENE_PATH)
 
 
