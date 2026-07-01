@@ -184,14 +184,14 @@ func _on_building_captured(_building: Node, _new_team: int) -> void:
 ## player commander (see Commander.gd/EnemyCommanderBot.gd), so these warnings
 ## are naturally player-only. Only fires once per crossing into "low",
 ## not on every frame the value stays low.
-func _on_commander_fuel_changed(value: float) -> void:
+func _on_commander_fuel_changed(_team: int, value: float) -> void:
 	var is_low: bool = value <= Constants.MAX_PLAYER_FUEL * LOW_FUEL_RATIO
 	if is_low and not _was_fuel_low:
 		play_sfx("low_fuel_warning")
 	_was_fuel_low = is_low
 
 
-func _on_commander_ammo_changed(value: float) -> void:
+func _on_commander_ammo_changed(_team: int, value: float) -> void:
 	var is_low: bool = value <= Constants.MAX_PLAYER_AMMO * LOW_AMMO_RATIO
 	if is_low and not _was_ammo_low:
 		play_sfx("low_ammo_warning")

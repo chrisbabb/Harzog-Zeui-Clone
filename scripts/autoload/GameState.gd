@@ -29,6 +29,12 @@ var selected_difficulty: int = 1 # Normal
 var selected_starting_credits: int = Constants.STARTING_MONEY
 var selected_match_speed: int = Constants.MatchSpeed.NORMAL
 var selected_outpost_count: int = 7
+var game_mode: int = Constants.GameMode.SINGLE_PLAYER
+var split_direction: int = Constants.SplitDirection.VERTICAL
+
+# Per-player UI selections; P1 uses selected_*, P2 uses p2_selected_*
+var p2_selected_unit_type: int = Constants.UnitType.SCOUT_BUGGY
+var p2_selected_order: int = Constants.UnitOrder.HOLD_POSITION
 
 
 func _ready() -> void:
@@ -109,12 +115,36 @@ func get_enemy_team(team: int) -> int:
 	return Constants.Team.ENEMY if team == Constants.Team.PLAYER else Constants.Team.PLAYER
 
 
-func configure_skirmish(map: int, difficulty: int, starting_credits: int, match_speed: int, outpost_count: int) -> void:
+func configure_skirmish(map: int, difficulty: int, starting_credits: int, match_speed: int, outpost_count: int, mode: int = Constants.GameMode.SINGLE_PLAYER, split: int = Constants.SplitDirection.VERTICAL) -> void:
 	selected_map = map
 	selected_difficulty = difficulty
 	selected_starting_credits = starting_credits
 	selected_match_speed = match_speed
 	selected_outpost_count = outpost_count
+	game_mode = mode
+	split_direction = split
+
+
+func get_selected_unit_type(team: int) -> int:
+	return p2_selected_unit_type if team == Constants.Team.ENEMY else selected_unit_type
+
+
+func set_selected_unit_type(team: int, unit_type: int) -> void:
+	if team == Constants.Team.ENEMY:
+		p2_selected_unit_type = unit_type
+	else:
+		selected_unit_type = unit_type
+
+
+func get_selected_order(team: int) -> int:
+	return p2_selected_order if team == Constants.Team.ENEMY else selected_order
+
+
+func set_selected_order(team: int, order: int) -> void:
+	if team == Constants.Team.ENEMY:
+		p2_selected_order = order
+	else:
+		selected_order = order
 
 
 func reset_match_state() -> void:
@@ -127,6 +157,8 @@ func reset_match_state() -> void:
 	enemy_commander = null
 	selected_unit_type = Constants.UnitType.SCOUT_BUGGY
 	selected_order = Constants.UnitOrder.HOLD_POSITION
+	p2_selected_unit_type = Constants.UnitType.SCOUT_BUGGY
+	p2_selected_order = Constants.UnitOrder.HOLD_POSITION
 	winner = -1
 	player_unit_count = 0
 	enemy_unit_count = 0

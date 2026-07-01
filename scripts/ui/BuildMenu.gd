@@ -11,18 +11,27 @@ const UNIT_CAP_MESSAGE: String = "Unit cap reached (%d max)." % Constants.MAX_UN
 @onready var options_container: VBoxContainer = $Panel/MarginContainer/ListContainer/OptionsContainer
 @onready var close_button: Button = $Panel/MarginContainer/ListContainer/CloseButton
 
+# Which player team this menu belongs to; set to ENEMY for P2 in local multiplayer.
+@export var team: int = Constants.Team.PLAYER
+
 var _buttons_by_type: Dictionary = {}
 
 
 func _ready() -> void:
 	visible = false
-	EventBus.build_menu_requested.connect(toggle)
+	EventBus.build_menu_requested.connect(_on_build_menu_requested)
 	EventBus.money_changed.connect(_on_money_changed)
 	EventBus.unit_created.connect(_on_unit_count_changed)
 	EventBus.unit_destroyed.connect(_on_unit_count_changed)
 	close_button.pressed.connect(close)
 	_populate_options()
 	_refresh_affordability()
+
+
+func _on_build_menu_requested(requesting_team: int) -> void:
+	if requesting_team != team:
+		return
+	toggle()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -78,14 +87,14 @@ func _option_text(unit_type: int) -> String:
 
 
 func _refresh_affordability() -> void:
-	var at_cap: bool = GameState.get_unit_count(Constants.Team.PLAYER) >= Constants.MAX_UNITS_PER_TEAM
+	var at_cap: bool = GameState.get_unit_count(team) >= Constants.MAX_UNITS_PER_TEAM
 	for unit_type in _buttons_by_type:
 		var button: Button = _buttons_by_type[unit_type]
-		button.disabled = at_cap or not Economy.can_afford(Constants.Team.PLAYER, UnitDatabase.get_cost(unit_type))
+		button.disabled = at_cap or not Economy.can_afford(team, UnitDatabase.get_cost(unit_type))
 
 
-func _on_money_changed(team: int, _amount: float) -> void:
-	if team == Constants.Team.PLAYER:
+func _on_money_changed(changed_team: int, _amount: float) -> void:
+	if changed_team == team:
 		_refresh_affordability()
 
 
@@ -97,30 +106,31 @@ func _attempt_purchase(unit_type: int) -> void:
 	if not _commander_alive():
 		return
 
-	if GameState.get_unit_count(Constants.Team.PLAYER) >= Constants.MAX_UNITS_PER_TEAM:
-		EventBus.hud_message.emit(UNIT_CAP_MESSAGE)
+	if GameState.get_unit_count(team) >= Constants.MAX_UNITS_PER_TEAM:
+		EventBus.hud_message.emit(UNIT_CAP_MESSAGE, team)
 		return
 
 	EventBus.audio_event_requested.emit("ui_select")
-	GameState.selected_unit_type = unit_type
-	var commander: Node = GameState.player_commander
-	var building: Node = GameState.get_nearest_friendly_production_building(Constants.Team.PLAYER, commander.global_position)
+	GameState.set_selected_unit_type(team, unit_type)
+	var commander: Node = GameState.player_commander if team == Constants.Team.PLAYER else GameState.enemy_commander
+	var building: Node = GameState.get_nearest_friendly_production_building(team, commander.global_position)
 	var in_range: bool = building != null and commander.global_position.distance_to(building.global_position) <= building.production_radius
 
 	if not in_range or not building.can_produce(unit_type):
-		EventBus.hud_message.emit(NOT_IN_RANGE_MESSAGE)
+		EventBus.hud_message.emit(NOT_IN_RANGE_MESSAGE, team)
 		return
 
-	if not Economy.spend(Constants.Team.PLAYER, UnitDatabase.get_cost(unit_type)):
-		EventBus.hud_message.emit(INSUFFICIENT_FUNDS_MESSAGE)
+	if not Economy.spend(team, UnitDatabase.get_cost(unit_type)):
+		EventBus.hud_message.emit(INSUFFICIENT_FUNDS_MESSAGE, team)
 		return
 
-	building.enqueue_unit(unit_type, GameState.selected_order)
+	building.enqueue_unit(unit_type, GameState.get_selected_order(team))
 	EventBus.hud_message.emit("%s ordered (%s)" % [
 		UnitDatabase.get_unit_name(unit_type),
-		Constants.UNIT_ORDER_NAMES.get(GameState.selected_order, "Hold Position"),
-	])
+		Constants.UNIT_ORDER_NAMES.get(GameState.get_selected_order(team), "Hold Position"),
+	], team)
 
 
 func _commander_alive() -> bool:
-	return is_instance_valid(GameState.player_commander)
+	var commander: Node = GameState.player_commander if team == Constants.Team.PLAYER else GameState.enemy_commander
+	return is_instance_valid(commander)

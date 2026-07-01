@@ -139,7 +139,7 @@ func _enter_step(step: int) -> void:
 			_clear_highlight()
 		Step.REFUEL_AT_HQ:
 			_commander.set("fuel", Constants.MAX_PLAYER_FUEL * 0.4)
-			EventBus.commander_fuel_changed.emit(_commander.get("fuel"))
+			EventBus.commander_fuel_changed.emit(Constants.Team.PLAYER, _commander.get("fuel"))
 			if is_instance_valid(_player_hq):
 				_set_highlight(_player_hq.global_position)
 		Step.PICK_UP_DRONE, Step.ASSIGN_CAPTURE_ORDER:
@@ -190,12 +190,12 @@ func _clear_highlight() -> void:
 # EventBus-driven step completion
 # ---------------------------------------------------------------------------
 
-func _on_commander_mode_changed(_mode: int) -> void:
+func _on_commander_mode_changed(_team: int, _mode: int) -> void:
 	if current_step == Step.TRANSFORM_MODE:
 		_advance_step()
 
 
-func _on_build_menu_requested() -> void:
+func _on_build_menu_requested(_team: int) -> void:
 	if current_step == Step.OPEN_BUILD_MENU:
 		_advance_step()
 

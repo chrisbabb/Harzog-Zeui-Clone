@@ -1,9 +1,15 @@
 extends CanvasLayer
 ## Full in-match HUD: resource readout, commander panel, HQ health bars,
 ## match timer, build/command menus, pause menu, and match-end overlay.
+## In local multiplayer each player has their own HUD instance with a
+## different team value so signals and polling are filtered per-player.
 
 const FEEDBACK_DURATION: float = 4.0
 const HUD_POLL_INTERVAL: float = 0.1
+
+# Which team this HUD belongs to. Set before adding to the tree in local
+# multiplayer; leave at PLAYER for single-player and tutorial scenes.
+@export var team: int = Constants.Team.PLAYER
 
 var _units_built: int = 0
 var _units_lost: int = 0
@@ -57,8 +63,16 @@ func _ready() -> void:
 	_rematch_button.pressed.connect(_on_rematch_pressed)
 	_main_menu_button.pressed.connect(_on_main_menu_pressed)
 
-	_on_money_changed(Constants.Team.PLAYER, Economy.get_money(Constants.Team.PLAYER))
+	_on_money_changed(team, Economy.get_money(team))
 	_refresh_outpost_display()
+
+	# In local multiplayer label the commander panel with the player number
+	if GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER:
+		var panel_title: Label = $Root/CommanderPanel/M/Box/PanelTitle
+		panel_title.text = "P1 COMMANDER" if team == Constants.Team.PLAYER else "P2 COMMANDER"
+		# HQ labels from each player's perspective
+		_player_hq_label.text = "Your HQ: 3000/3000"
+		_enemy_hq_label.text = "Opponent HQ: 3000/3000"
 
 
 func _process(delta: float) -> void:
@@ -76,58 +90,78 @@ func _process(delta: float) -> void:
 		_update_selected_labels()
 
 
-func _unhandled_input(_event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	var is_local_mp: bool = GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER
+
+	# In local multiplayer P1's HUD ignores joypad events; P2's HUD ignores keyboard/mouse.
+	if is_local_mp:
+		var is_joy_event: bool = event is InputEventJoypadButton or event is InputEventJoypadMotion
+		if team == Constants.Team.PLAYER and is_joy_event:
+			return
+		if team == Constants.Team.ENEMY and not is_joy_event:
+			return
+
 	if Input.is_action_just_pressed(Constants.ACTION_OPEN_BUILD_MENU):
-		EventBus.build_menu_requested.emit()
+		EventBus.build_menu_requested.emit(team)
 	elif Input.is_action_just_pressed(Constants.ACTION_OPEN_COMMAND_MENU):
-		EventBus.command_menu_requested.emit()
+		EventBus.command_menu_requested.emit(team)
 	elif Input.is_action_just_pressed(Constants.ACTION_CYCLE_ORDER):
 		_cycle_selected_order()
 
 
 func _cycle_selected_order() -> void:
 	var order_count: int = Constants.UnitOrder.size()
-	GameState.selected_order = (GameState.selected_order + 1) % order_count
-	EventBus.hud_message.emit("Order: %s" % Constants.UNIT_ORDER_NAMES.get(GameState.selected_order, ""))
+	var new_order: int = (GameState.get_selected_order(team) + 1) % order_count
+	GameState.set_selected_order(team, new_order)
+	EventBus.hud_message.emit("Order: %s" % Constants.UNIT_ORDER_NAMES.get(new_order, ""), team)
 
 
-func _on_money_changed(team: int, amount: float) -> void:
-	if team != Constants.Team.PLAYER:
+func _on_money_changed(changed_team: int, amount: float) -> void:
+	if changed_team != team:
 		return
 	_credits_label.text = "Credits: %d" % int(amount)
 
 
-func _on_commander_mode_changed(mode: int) -> void:
+func _on_commander_mode_changed(changed_team: int, mode: int) -> void:
+	if changed_team != team:
+		return
 	_mode_label.text = "Mode: %s" % ("AIR" if mode == Constants.CommanderMode.AIR else "GROUND")
 
 
-func _on_commander_fuel_changed(value: float) -> void:
+func _on_commander_fuel_changed(changed_team: int, value: float) -> void:
+	if changed_team != team:
+		return
 	_fuel_bar.value = value
 
 
-func _on_commander_ammo_changed(value: float) -> void:
+func _on_commander_ammo_changed(changed_team: int, value: float) -> void:
+	if changed_team != team:
+		return
 	_ammo_bar.value = value
 
 
 func _on_building_captured(building: Node, new_team: int) -> void:
-	if new_team == Constants.Team.PLAYER:
+	if new_team == team:
 		_outposts_captured += 1
 	_refresh_outpost_display()
 
 
 func _on_unit_created(unit: Node) -> void:
-	if unit.get("team") == Constants.Team.PLAYER:
+	if unit.get("team") == team:
 		_units_built += 1
 
 
 func _on_unit_destroyed(unit: Node) -> void:
-	if unit.get("team") == Constants.Team.PLAYER:
+	var enemy_team: int = GameState.get_enemy_team(team)
+	if unit.get("team") == team:
 		_units_lost += 1
-	elif unit.get("team") == Constants.Team.ENEMY:
+	elif unit.get("team") == enemy_team:
 		_units_destroyed += 1
 
 
-func _on_hud_message(text: String) -> void:
+func _on_hud_message(text: String, msg_team: int) -> void:
+	if msg_team != -1 and msg_team != team:
+		return
 	_feedback_label.text = text
 	_feedback_timer = FEEDBACK_DURATION
 
@@ -136,7 +170,7 @@ func _on_match_ended(winning_team: int) -> void:
 	get_tree().paused = false
 	_pause_menu.visible = false
 
-	_result_label.text = "VICTORY" if winning_team == Constants.Team.PLAYER else "DEFEAT"
+	_result_label.text = "VICTORY" if winning_team == team else "DEFEAT"
 	_time_label.text = _format_time(GameState.elapsed_time)
 	_built_label.text = str(_units_built)
 	_lost_label.text = str(_units_lost)
@@ -164,7 +198,7 @@ func _update_timer() -> void:
 
 
 func _update_commander_panel() -> void:
-	var commander: Node = GameState.player_commander
+	var commander: Node = GameState.player_commander if team == Constants.Team.PLAYER else GameState.enemy_commander
 	if not is_instance_valid(commander):
 		_hp_bar.value = 0.0
 		_carrying_label.text = "Carrying: None"
@@ -181,22 +215,24 @@ func _update_commander_panel() -> void:
 
 
 func _update_hq_bars() -> void:
-	var enemy_hq: Node = GameState.enemy_hq
-	if enemy_hq != null and is_instance_valid(enemy_hq):
-		var hp: float = enemy_hq.get("hp") if enemy_hq.get("hp") != null else Constants.HQ_MAX_HP
-		_enemy_hq_bar.value = hp
-		_enemy_hq_label.text = "Enemy HQ: %d/%d" % [int(hp), int(Constants.HQ_MAX_HP)]
+	# "Player HQ" from this HUD's perspective = the HQ belonging to this HUD's team
+	var my_hq: Node = GameState.player_hq if team == Constants.Team.PLAYER else GameState.enemy_hq
+	var opp_hq: Node = GameState.enemy_hq if team == Constants.Team.PLAYER else GameState.player_hq
 
-	var player_hq: Node = GameState.player_hq
-	if player_hq != null and is_instance_valid(player_hq):
-		var hp: float = player_hq.get("hp") if player_hq.get("hp") != null else Constants.HQ_MAX_HP
+	if opp_hq != null and is_instance_valid(opp_hq):
+		var hp: float = opp_hq.get("hp") if opp_hq.get("hp") != null else Constants.HQ_MAX_HP
+		_enemy_hq_bar.value = hp
+		_enemy_hq_label.text = "Opponent HQ: %d/%d" % [int(hp), int(Constants.HQ_MAX_HP)]
+
+	if my_hq != null and is_instance_valid(my_hq):
+		var hp: float = my_hq.get("hp") if my_hq.get("hp") != null else Constants.HQ_MAX_HP
 		_player_hq_bar.value = hp
 		_player_hq_label.text = "Your HQ: %d/%d" % [int(hp), int(Constants.HQ_MAX_HP)]
 
 
 func _update_selected_labels() -> void:
-	var unit_type: int = GameState.selected_unit_type
-	var order: int = GameState.selected_order
+	var unit_type: int = GameState.get_selected_unit_type(team)
+	var order: int = GameState.get_selected_order(team)
 
 	if unit_type != _prev_unit_type:
 		_prev_unit_type = unit_type
@@ -210,7 +246,7 @@ func _update_selected_labels() -> void:
 func _refresh_outpost_display() -> void:
 	var owned: int = 0
 	for outpost in GameState.outposts:
-		if is_instance_valid(outpost) and outpost.get("team") == Constants.Team.PLAYER:
+		if is_instance_valid(outpost) and outpost.get("team") == team:
 			owned += 1
 	_outposts_label.text = "Outposts: %d" % owned
 	var income: int = Constants.BASE_INCOME_PER_SECOND + owned * Constants.OUTPOST_INCOME_PER_SECOND

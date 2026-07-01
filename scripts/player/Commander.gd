@@ -67,6 +67,9 @@ const SQUASH_SCALE: Vector3 = Vector3(1.3, 0.7, 1.3)
 const PROJECTILE_FORWARD_OFFSET: float = 1.2
 
 @export var team: int = Constants.Team.PLAYER
+# 0 = P1 (keyboard/mouse + controller in single-player)
+# 1 = P2 (controller-only in local multiplayer)
+@export var player_index: int = 0
 
 var mode: int = Constants.CommanderMode.GROUND
 var hp: float = MAX_HP
@@ -78,6 +81,8 @@ var carried_unit: Node = null
 var _is_dead: bool = false
 var _transform_locked_remaining: float = 0.0
 var _fire_cooldown_remaining: float = 0.0
+var _joy_prev_transform: bool = false
+var _joy_prev_pickup: bool = false
 var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
 var _muzzle_flash: MeshInstance3D
@@ -97,23 +102,16 @@ func _ready() -> void:
 	_create_contrail_particles()
 	_create_dust_particles()
 	_update_mode_visuals()
-	EventBus.commander_mode_changed.emit(mode)
-	EventBus.commander_fuel_changed.emit(fuel)
-	EventBus.commander_ammo_changed.emit(ammo)
+	EventBus.commander_mode_changed.emit(team, mode)
+	EventBus.commander_fuel_changed.emit(team, fuel)
+	EventBus.commander_ammo_changed.emit(team, ammo)
 
 
 func _physics_process(delta: float) -> void:
 	_update_timers(delta)
 	_update_transform_animation()
 
-	if Input.is_action_just_pressed(Constants.ACTION_TRANSFORM_MODE):
-		_toggle_transform()
-
-	if Input.is_action_just_pressed(Constants.ACTION_PICKUP_DROP):
-		_toggle_pickup_drop()
-
-	if Input.is_action_pressed(Constants.ACTION_FIRE_PRIMARY):
-		_try_fire()
+	_handle_gameplay_input()
 
 	var input_direction: Vector3 = _get_camera_relative_input()
 	_update_fuel(delta, input_direction != Vector3.ZERO)
@@ -158,11 +156,75 @@ func _update_timers(delta: float) -> void:
 	_update_muzzle_flash(delta)
 
 
+func _handle_gameplay_input() -> void:
+	if player_index == 1:
+		_handle_p2_gameplay_input()
+	elif GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER:
+		_handle_p1_mp_gameplay_input()
+	else:
+		_handle_p1_sp_gameplay_input()
+
+
+## P1 single-player: existing action-map path (keyboard + controller both work)
+func _handle_p1_sp_gameplay_input() -> void:
+	if Input.is_action_just_pressed(Constants.ACTION_TRANSFORM_MODE):
+		_toggle_transform()
+	if Input.is_action_just_pressed(Constants.ACTION_PICKUP_DROP):
+		_toggle_pickup_drop()
+	if Input.is_action_pressed(Constants.ACTION_FIRE_PRIMARY):
+		_try_fire()
+
+
+## P1 local-multiplayer: keyboard/mouse only, no joypad reads, to prevent
+## controller bleed into P2's inputs.
+func _handle_p1_mp_gameplay_input() -> void:
+	if Input.is_key_pressed(KEY_E) and not _joy_prev_transform:
+		_toggle_transform()
+	_joy_prev_transform = Input.is_key_pressed(KEY_E)
+	if Input.is_key_pressed(KEY_Q) and not _joy_prev_pickup:
+		_toggle_pickup_drop()
+	_joy_prev_pickup = Input.is_key_pressed(KEY_Q)
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_key_pressed(KEY_SPACE):
+		_try_fire()
+
+
+## P2 local-multiplayer: direct joypad reads, device 0.
+func _handle_p2_gameplay_input() -> void:
+	var transform_now: bool = Input.is_joy_button_pressed(0, JOY_BUTTON_B)
+	if transform_now and not _joy_prev_transform:
+		_toggle_transform()
+	_joy_prev_transform = transform_now
+
+	var pickup_now: bool = Input.is_joy_button_pressed(0, JOY_BUTTON_X)
+	if pickup_now and not _joy_prev_pickup:
+		_toggle_pickup_drop()
+	_joy_prev_pickup = pickup_now
+
+	if Input.is_joy_button_pressed(0, JOY_BUTTON_A):
+		_try_fire()
+
+
 func _get_camera_relative_input() -> Vector3:
-	var raw_input := Vector2(
-		Input.get_action_strength(Constants.ACTION_MOVE_RIGHT) - Input.get_action_strength(Constants.ACTION_MOVE_LEFT),
-		Input.get_action_strength(Constants.ACTION_MOVE_BACK) - Input.get_action_strength(Constants.ACTION_MOVE_FORWARD)
-	)
+	var raw_input: Vector2
+	if player_index == 1:
+		raw_input = Vector2(
+			Input.get_joy_axis(0, JOY_AXIS_LEFT_X),
+			Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)
+		)
+	elif GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER:
+		# P1 in local multiplayer: keyboard-only to avoid joypad bleed
+		raw_input = Vector2(
+			float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) -
+			float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)),
+			float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) -
+			float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
+		)
+	else:
+		raw_input = Vector2(
+			Input.get_action_strength(Constants.ACTION_MOVE_RIGHT) - Input.get_action_strength(Constants.ACTION_MOVE_LEFT),
+			Input.get_action_strength(Constants.ACTION_MOVE_BACK) - Input.get_action_strength(Constants.ACTION_MOVE_FORWARD)
+		)
+
 	if raw_input.length_squared() < 0.0001:
 		return Vector3.ZERO
 
@@ -185,10 +247,18 @@ func _get_camera_relative_input() -> Vector3:
 
 
 func _get_camera_relative_aim() -> Vector3:
-	var raw_aim := Vector2(
-		Input.get_action_strength(Constants.ACTION_AIM_RIGHT) - Input.get_action_strength(Constants.ACTION_AIM_LEFT),
-		Input.get_action_strength(Constants.ACTION_AIM_BACK) - Input.get_action_strength(Constants.ACTION_AIM_FORWARD)
-	)
+	var raw_aim: Vector2
+	if player_index == 1:
+		raw_aim = Vector2(
+			Input.get_joy_axis(0, JOY_AXIS_RIGHT_X),
+			Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
+		)
+	else:
+		raw_aim = Vector2(
+			Input.get_action_strength(Constants.ACTION_AIM_RIGHT) - Input.get_action_strength(Constants.ACTION_AIM_LEFT),
+			Input.get_action_strength(Constants.ACTION_AIM_BACK) - Input.get_action_strength(Constants.ACTION_AIM_FORWARD)
+		)
+
 	if raw_aim.length_squared() < 0.04:
 		return Vector3.ZERO
 
@@ -233,7 +303,7 @@ func _update_fuel(delta: float, is_moving: bool) -> void:
 		fuel = max(0.0, fuel - drain_rate * delta)
 
 	if fuel != previous_fuel:
-		EventBus.commander_fuel_changed.emit(fuel)
+		EventBus.commander_fuel_changed.emit(team, fuel)
 
 	if fuel <= 0.0 and mode == Constants.CommanderMode.AIR:
 		_begin_transform(Constants.CommanderMode.GROUND)
@@ -251,7 +321,7 @@ func _begin_transform(new_mode: int) -> void:
 	_transform_locked_remaining = Constants.PLAYER_TRANSFORM_TIME
 	# AIR mode flies over units/buildings/terrain instead of clearing their height.
 	collision_mask = 0 if mode == Constants.CommanderMode.AIR else 1
-	EventBus.commander_mode_changed.emit(mode)
+	EventBus.commander_mode_changed.emit(team, mode)
 
 
 func _update_transform_animation() -> void:
@@ -475,7 +545,7 @@ func _try_fire() -> void:
 		return
 
 	ammo -= AMMO_FIRE_COST
-	EventBus.commander_ammo_changed.emit(ammo)
+	EventBus.commander_ammo_changed.emit(team, ammo)
 	_fire_cooldown_remaining = FIRE_COOLDOWN
 	_spawn_projectile()
 	_trigger_muzzle_flash()

@@ -38,6 +38,7 @@ var _highlight_time: float = 0.0
 func _ready() -> void:
 	Engine.time_scale = 1.0
 	GameState.reset_match_state()
+	GameState.game_mode = Constants.GameMode.SINGLE_PLAYER
 	GameState.selected_starting_credits = Constants.STARTING_MONEY
 	Economy.reset()
 	EventBus.camera_shake_requested.connect(_on_camera_shake_requested)

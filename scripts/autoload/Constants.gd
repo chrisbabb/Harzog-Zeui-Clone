@@ -5,6 +5,12 @@ extends Node
 # Teams
 enum Team { PLAYER, ENEMY, NEUTRAL }
 
+# Game modes
+enum GameMode { SINGLE_PLAYER, LOCAL_MULTIPLAYER }
+
+# Split-screen layout
+enum SplitDirection { VERTICAL, HORIZONTAL }
+
 # Commander transform modes
 enum CommanderMode { AIR, GROUND }
 

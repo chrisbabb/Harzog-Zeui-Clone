@@ -9,14 +9,23 @@ const INSUFFICIENT_FUNDS_MESSAGE: String = "Insufficient credits."
 @onready var options_container: VBoxContainer = $Panel/MarginContainer/ListContainer/OptionsContainer
 @onready var close_button: Button = $Panel/MarginContainer/ListContainer/CloseButton
 
+# Which player team this menu belongs to; set to ENEMY for P2 in local multiplayer.
+@export var team: int = Constants.Team.PLAYER
+
 var command_labels: Dictionary = Constants.UNIT_ORDER_NAMES
 
 
 func _ready() -> void:
 	visible = false
-	EventBus.command_menu_requested.connect(toggle)
+	EventBus.command_menu_requested.connect(_on_command_menu_requested)
 	close_button.pressed.connect(close)
 	_populate_options()
+
+
+func _on_command_menu_requested(requesting_team: int) -> void:
+	if requesting_team != team:
+		return
+	toggle()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -66,15 +75,15 @@ func _populate_options() -> void:
 ## (the carried unit, or nearby grounded units -- see Commander.gd).
 func _attempt_select_order(order: int) -> void:
 	EventBus.audio_event_requested.emit("ui_select")
-	GameState.selected_order = order
+	GameState.set_selected_order(team, order)
 
-	var commander: Node = GameState.player_commander
+	var commander: Node = GameState.player_commander if team == Constants.Team.PLAYER else GameState.enemy_commander
 	if is_instance_valid(commander):
 		for unit in commander.get_reorderable_units():
 			if unit.get("current_order") == order:
 				continue
-			if not Economy.spend(Constants.Team.PLAYER, Constants.ORDER_CHANGE_COST):
-				EventBus.hud_message.emit(INSUFFICIENT_FUNDS_MESSAGE)
+			if not Economy.spend(team, Constants.ORDER_CHANGE_COST):
+				EventBus.hud_message.emit(INSUFFICIENT_FUNDS_MESSAGE, team)
 				break
 			unit.give_order(order)
 
@@ -82,4 +91,5 @@ func _attempt_select_order(order: int) -> void:
 
 
 func _commander_alive() -> bool:
-	return is_instance_valid(GameState.player_commander)
+	var commander: Node = GameState.player_commander if team == Constants.Team.PLAYER else GameState.enemy_commander
+	return is_instance_valid(commander)
