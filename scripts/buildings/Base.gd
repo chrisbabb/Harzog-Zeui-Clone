@@ -9,9 +9,6 @@ const RELOAD_RATE: float = 8.0
 const DELIVERY_DELAY: float = 1.5
 const HEALTH_BAR_HEIGHT: float = 11.0
 const HEALTH_BAR_SIZE: Vector3 = Vector3(4.0, 0.3, 0.3)
-const TEAM_STRIP_OUTER_RADIUS: float = 3.7
-const TEAM_STRIP_INNER_RADIUS: float = 3.4
-const TEAM_STRIP_HEIGHT: float = 0.15
 
 @export var team: int = Constants.Team.PLAYER
 @export var max_hp: float = Constants.HQ_MAX_HP
@@ -28,17 +25,15 @@ var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
-var _team_strip_material: StandardMaterial3D
+var _visual_root: Node3D = null
 
-@onready var body_mesh: MeshInstance3D = $BodyMesh
-@onready var tower_mesh: MeshInstance3D = $TowerMesh
 @onready var spawn_point: Marker3D = $SpawnPoint
 
 
 func _ready() -> void:
 	hp = max_hp
+	_build_visual()
 	_create_health_bar()
-	_create_team_strip()
 	update_team_material()
 	GameState.register_hq(self)
 	add_to_group("buildings")
@@ -135,14 +130,9 @@ func _update_delivery(delta: float) -> void:
 
 
 func update_team_material() -> void:
-	if _body_material == null:
-		_body_material = StandardMaterial3D.new()
-		body_mesh.material_override = _body_material
-		tower_mesh.material_override = _body_material
-	_body_material.albedo_color = Constants.team_color(team)
+	if _body_material != null:
+		_body_material.albedo_color = Constants.team_color(team)
 	_health_bar_material.albedo_color = Constants.team_color(team)
-	_team_strip_material.albedo_color = Constants.team_color(team)
-	_team_strip_material.emission = Constants.team_color(team)
 
 
 func _update_supply(delta: float) -> void:
@@ -197,20 +187,27 @@ func _update_health_bar() -> void:
 		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
 
 
-## A glowing team-colored ring around the HQ's base, built in code like the
-## health bar above so Base.tscn stays untouched.
-func _create_team_strip() -> void:
-	var strip := MeshInstance3D.new()
-	var mesh := TorusMesh.new()
-	mesh.inner_radius = TEAM_STRIP_INNER_RADIUS
-	mesh.outer_radius = TEAM_STRIP_OUTER_RADIUS
-	strip.mesh = mesh
-	_team_strip_material = StandardMaterial3D.new()
-	_team_strip_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_team_strip_material.emission_enabled = true
-	strip.material_override = _team_strip_material
-	strip.position = Vector3(0.0, TEAM_STRIP_HEIGHT, 0.0)
-	add_child(strip)
+## Clears the .tscn's placeholder BodyMesh/TowerMesh and builds this HQ's
+## final-style visual via BuildingVisualFactory. _body_material becomes the
+## returned "Hull" mesh's own material, a private duplicate
+## BuildingVisualFactory made from MaterialLibrary, which
+## update_team_material()/_update_flash() mutate directly. This is a
+## procedural final-style placeholder model -- meant to be replaced by an
+## authored Blender asset later without touching any other system.
+func _build_visual() -> void:
+	var old_body: Node = get_node_or_null("BodyMesh")
+	if old_body != null:
+		old_body.queue_free()
+	var old_tower: Node = get_node_or_null("TowerMesh")
+	if old_tower != null:
+		old_tower.queue_free()
+
+	_visual_root = BuildingVisualFactory.create_hq_visual(team)
+	add_child(_visual_root)
+
+	var hull: MeshInstance3D = _visual_root.get_node_or_null("Hull")
+	if hull != null:
+		_body_material = hull.material_override as StandardMaterial3D
 
 
 func _update_flash(delta: float) -> void:

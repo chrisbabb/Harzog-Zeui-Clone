@@ -42,9 +42,9 @@ var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
 var _ring_material: StandardMaterial3D
+var _ring_mesh: MeshInstance3D = null
+var _visual_root: Node3D = null
 
-@onready var tower_mesh: MeshInstance3D = $TowerMesh
-@onready var ring_mesh: MeshInstance3D = $RingMesh
 @onready var capture_zone: Area3D = $CaptureZone
 @onready var capture_zone_shape: CollisionShape3D = $CaptureZone/CollisionShape3D
 @onready var unit_spawn_point: Marker3D = $UnitSpawnPoint
@@ -58,6 +58,7 @@ func _ready() -> void:
 	_apply_capture_radius()
 	_progress_bar_material = StandardMaterial3D.new()
 	progress_bar_mesh.material_override = _progress_bar_material
+	_build_visual()
 	_create_health_bar()
 	update_team_material()
 	GameState.register_outpost(self)
@@ -106,18 +107,18 @@ func reload_commander(commander: Node, delta: float) -> void:
 
 
 func update_team_material() -> void:
-	if _body_material == null:
-		_body_material = StandardMaterial3D.new()
-		tower_mesh.material_override = _body_material
-	if _ring_material == null:
-		_ring_material = StandardMaterial3D.new()
-		_ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_ring_material.emission_enabled = true
-		ring_mesh.material_override = _ring_material
-	_body_material.albedo_color = Constants.team_color(team)
+	if _body_material != null:
+		_body_material.albedo_color = Constants.team_color(team)
 	_health_bar_material.albedo_color = Constants.team_color(team)
-	_ring_material.albedo_color = Constants.team_color(team)
-	_ring_material.emission = Constants.team_color(team)
+	if _ring_material != null:
+		# MaterialLibrary's emissive accents are intentionally brighter than
+		# Constants.team_color() (a flat body tint), so re-derive from the
+		# same source the factory used initially rather than
+		# Constants.team_color() directly -- otherwise a captured outpost's
+		# ring color would shift on every recapture instead of matching.
+		var emissive_source: StandardMaterial3D = MaterialLibrary.emissive_for_team(team)
+		_ring_material.albedo_color = emissive_source.albedo_color
+		_ring_material.emission = emissive_source.emission
 
 
 func can_produce(unit_type: int) -> bool:
@@ -245,6 +246,36 @@ func _destroy() -> void:
 	queue_free()
 
 
+## Clears the .tscn's placeholder TowerMesh/RingMesh (ProgressBarMesh stays
+## -- it's a gameplay overlay, not part of the structural visual) and builds
+## this outpost's final-style visual via BuildingVisualFactory.
+## _body_material/_ring_material become the returned "Hull"/"CaptureRing"
+## meshes' own materials, private duplicates BuildingVisualFactory made from
+## MaterialLibrary: update_team_material()/_update_flash() mutate
+## _body_material, and _update_ring_animation() below mutates _ring_material
+## every frame while contested. This is a procedural final-style placeholder
+## model -- meant to be replaced by an authored Blender asset later without
+## touching any other system.
+func _build_visual() -> void:
+	var old_tower: Node = get_node_or_null("TowerMesh")
+	if old_tower != null:
+		old_tower.queue_free()
+	var old_ring: Node = get_node_or_null("RingMesh")
+	if old_ring != null:
+		old_ring.queue_free()
+
+	_visual_root = BuildingVisualFactory.create_outpost_visual(team)
+	add_child(_visual_root)
+
+	var hull: MeshInstance3D = _visual_root.get_node_or_null("Hull")
+	if hull != null:
+		_body_material = hull.material_override as StandardMaterial3D
+
+	_ring_mesh = _visual_root.get_node_or_null("CaptureRing")
+	if _ring_mesh != null:
+		_ring_material = _ring_mesh.material_override as StandardMaterial3D
+
+
 ## Built in code rather than the .tscn (like Unit.gd's order label/health
 ## bar) so Outpost.tscn stays untouched; hidden until the outpost first
 ## takes damage. Placed above the existing capture-progress bar.
@@ -280,14 +311,16 @@ func _update_flash(delta: float) -> void:
 ## when idle; it additionally pulses brighter/larger while actively being
 ## captured (a capturing team exists and the zone isn't deadlocked/contested).
 func _update_ring_animation(delta: float) -> void:
-	ring_mesh.rotate_y(RING_ROTATION_SPEED * delta)
+	if _ring_mesh == null:
+		return
+	_ring_mesh.rotate_y(RING_ROTATION_SPEED * delta)
 
 	var being_captured: bool = capture_zone.get_capturing_team() != -1 and not capture_zone.is_contested()
 	if not being_captured:
-		ring_mesh.scale = Vector3.ONE
+		_ring_mesh.scale = Vector3.ONE
 		_ring_material.emission_energy_multiplier = 1.0
 		return
 
 	var pulse: float = sin(Time.get_ticks_msec() / 1000.0 * RING_PULSE_SPEED)
-	ring_mesh.scale = Vector3.ONE * (1.0 + pulse * RING_PULSE_SCALE)
+	_ring_mesh.scale = Vector3.ONE * (1.0 + pulse * RING_PULSE_SCALE)
 	_ring_material.emission_energy_multiplier = RING_PULSE_EMISSION_BASE + pulse * RING_PULSE_EMISSION_AMPLITUDE

@@ -66,6 +66,7 @@ var _health_bar_material: StandardMaterial3D
 var _wreck_remaining: float = 0.0
 var _health_bar_show_timer: float = 0.0
 var _team_strip: MeshInstance3D = null
+var _visual_root: Node3D = null
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -76,7 +77,7 @@ var _team_strip: MeshInstance3D = null
 
 func _ready() -> void:
 	_load_stats()
-	_apply_team_color()
+	_build_visual()
 	_apply_detection_radius()
 	_create_order_label()
 	_create_health_bar()
@@ -150,7 +151,6 @@ func die() -> void:
 		_health_bar.visible = false
 	if _team_strip != null:
 		_team_strip.visible = false
-	_body_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_wreck_remaining = WRECK_FADE_DURATION
 
 
@@ -484,14 +484,25 @@ func _formation_rank(type: int) -> int:
 			return 1
 
 
-## Unit scenes vary in how many visual parts they have (hull, turret,
-## wheels, ...), so every MeshInstance3D in the scene is tinted rather than
-## assuming a single fixed mesh node.
-func _apply_team_color() -> void:
-	_body_material = StandardMaterial3D.new()
-	_body_material.albedo_color = Constants.team_color(team)
+## Clears the .tscn's placeholder MeshInstance3D nodes (every mesh child at
+## this point is one -- see the per-type .tscn files under scenes/units/)
+## and builds this unit's final-style visual via UnitVisualFactory instead.
+## _body_material becomes the returned "Hull" mesh's own material, a private
+## duplicate UnitVisualFactory made from MaterialLibrary, which
+## _update_flash() below can safely mutate without affecting any other unit
+## sharing the same library material. These are procedural final-style
+## placeholder models -- meant to be swapped for authored Blender assets
+## later without touching Unit.gd beyond this call.
+func _build_visual() -> void:
 	for mesh in find_children("*", "MeshInstance3D", true, false):
-		(mesh as MeshInstance3D).material_override = _body_material
+		mesh.queue_free()
+
+	_visual_root = UnitVisualFactory.create_visual(unit_type, team)
+	add_child(_visual_root)
+
+	var hull: MeshInstance3D = _visual_root.get_node_or_null("Hull")
+	if hull != null:
+		_body_material = hull.material_override as StandardMaterial3D
 
 
 func _apply_detection_radius() -> void:
@@ -561,9 +572,18 @@ func _update_flash(delta: float) -> void:
 	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
 
 
+## Fades the whole visual hierarchy uniformly using each mesh's own
+## per-instance transparency (a GeometryInstance3D property, distinct from
+## the material's alpha) rather than mutating any material -- several parts
+## deliberately share MaterialLibrary resources directly (see
+## UnitVisualFactory), so mutating a material's alpha here would fade every
+## other unit using that same shared material too.
 func _update_wreck(delta: float) -> void:
 	_wreck_remaining -= delta
-	_body_material.albedo_color.a = clamp(_wreck_remaining / WRECK_FADE_DURATION, 0.0, 1.0)
+	var fade: float = 1.0 - clamp(_wreck_remaining / WRECK_FADE_DURATION, 0.0, 1.0)
+	if _visual_root != null:
+		for mesh in _visual_root.find_children("*", "MeshInstance3D", true, false):
+			(mesh as MeshInstance3D).transparency = fade
 	if _wreck_remaining <= 0.0:
 		queue_free()
 
