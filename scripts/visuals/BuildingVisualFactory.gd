@@ -60,10 +60,10 @@ static func create_outpost_visual(team: int) -> Node3D:
 	_add_cylinder(root, "Hull", 1.0, 1.3, 4.0, Vector3(0.0, 2.4, 0.0),
 		MaterialLibrary.body_for_team(team).duplicate())
 
-	# Duplicated (not shared) since _update_ring_animation() mutates this
-	# material's emission_energy_multiplier every frame while contested --
-	# the ownership core below intentionally points at the same instance
-	# so it pulses in sync with the ring rather than needing its own tween.
+	# Duplicated (not shared) since BuildingAnimator mutates this material's
+	# emission_energy_multiplier every frame -- the ownership core below
+	# intentionally points at the same instance so it pulses in sync with
+	# the ring rather than needing its own tween.
 	var ring_material: StandardMaterial3D = MaterialLibrary.emissive_for_team(team).duplicate()
 	_add_torus(root, "CaptureRing", 5.5, 6.0, Vector3(0.0, 0.45, 0.0), ring_material)
 	_add_sphere(root, "OwnershipCore", 0.5, Vector3(0.0, 4.9, 0.0), ring_material)

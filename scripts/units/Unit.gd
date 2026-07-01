@@ -22,7 +22,6 @@ const ARTILLERY_PROJECTILE_SCALE: float = 1.8
 const HEALTH_BAR_HEIGHT: float = 2.6
 const HEALTH_BAR_SIZE: Vector3 = Vector3(1.2, 0.15, 0.05)
 const HEALTH_BAR_SHOW_DURATION: float = 8.0
-const WRECK_FADE_DURATION: float = 5.0
 const TEAM_STRIP_OUTER_RADIUS: float = 0.95
 const TEAM_STRIP_INNER_RADIUS: float = 0.78
 const TEAM_STRIP_HEIGHT: float = 0.12
@@ -59,14 +58,12 @@ var is_destroyed: bool = false
 var _nearby_bodies: Array[Node] = []
 var _was_navigation_finished: bool = true
 var _order_label: Label3D = null
-var _body_material: StandardMaterial3D
-var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D = null
 var _health_bar_material: StandardMaterial3D
-var _wreck_remaining: float = 0.0
 var _health_bar_show_timer: float = 0.0
 var _team_strip: MeshInstance3D = null
 var _visual_root: Node3D = null
+var _animator: UnitAnimator = null
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -100,12 +97,15 @@ func _physics_process(delta: float) -> void:
 	if is_carried:
 		return
 	if is_destroyed:
-		_update_wreck(delta)
+		if _animator.update_wreck(delta):
+			queue_free()
 		return
 	_update_timers(delta)
 	_update_combat(delta)
 	_update_movement(delta)
 	_update_health_bar()
+	_animator.update(delta, velocity.length() > 0.1, current_enemy_target,
+		_find_active_support_target(), _is_actively_capturing())
 
 
 func give_order(order: int, target_position: Vector3 = Vector3.ZERO, target_building: Node = null) -> void:
@@ -129,7 +129,7 @@ func take_damage(amount: float, attacker: Node = null) -> void:
 	if is_destroyed:
 		return
 	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
-	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
+	_animator.on_damaged()
 	_health_bar_show_timer = HEALTH_BAR_SHOW_DURATION
 	if hp <= 0.0:
 		die()
@@ -151,7 +151,7 @@ func die() -> void:
 		_health_bar.visible = false
 	if _team_strip != null:
 		_team_strip.visible = false
-	_wreck_remaining = WRECK_FADE_DURATION
+	_animator.on_death()
 
 
 func set_carried(carried: bool) -> void:
@@ -190,7 +190,6 @@ func _update_timers(delta: float) -> void:
 		attack_cooldown -= delta
 	if _health_bar_show_timer > 0.0:
 		_health_bar_show_timer -= delta
-	_update_flash(delta)
 
 
 func _update_combat(delta: float) -> void:
@@ -307,6 +306,7 @@ func _damage_for_target(body: Node) -> float:
 func _fire_at(target: Node) -> void:
 	ammo -= AMMO_PER_SHOT
 	attack_cooldown = fire_rate
+	_animator.on_fire()
 	_spawn_projectile(target)
 	EventBus.audio_event_requested.emit("unit_fire")
 
@@ -317,7 +317,7 @@ func _spawn_projectile(target: Node) -> void:
 	var is_artillery: bool = unit_type == Constants.UnitType.ARTILLERY
 	var projectile: Node3D = PROJECTILE_SCENE.instantiate() as Node3D
 	_get_effects_root().add_child(projectile)
-	projectile.global_position = muzzle.global_position if muzzle != null else global_position
+	projectile.global_position = _animator.get_fire_origin(muzzle.global_position if muzzle != null else global_position)
 	projectile.set("team", team)
 	projectile.set("damage", _damage_for_target(target))
 	projectile.set("speed", ARTILLERY_PROJECTILE_SPEED if is_artillery else PROJECTILE_SPEED)
@@ -345,6 +345,33 @@ func _resupply(body: Node, delta: float) -> void:
 	body.set("hp", min(body.get("max_hp"), body.get("hp") + SUPPLY_REPAIR_RATE * delta))
 	body.set("fuel", min(body.get("max_fuel"), body.get("fuel") + SUPPLY_REFUEL_RATE * delta))
 	body.set("ammo", min(body.get("max_ammo"), body.get("ammo") + SUPPLY_RELOAD_RATE * delta))
+
+
+## Cheap proxy for "who is this Supply Truck's repair beam pointed at" --
+## mirrors _update_supply_aura()'s loop but returns on the first match
+## instead of resupplying everyone in range. Only ever non-null when
+## supply_radius > 0 (i.e. only for Supply Trucks).
+func _find_active_support_target() -> Node:
+	if supply_radius <= 0.0:
+		return null
+	for body in _nearby_bodies:
+		if is_instance_valid(body) and body.get("team") == team and body.is_in_group("units"):
+			return body
+	return null
+
+
+## True only once a Capture Drone is actually within range of an outpost it
+## doesn't already own -- order alone (current_order == CAPTURE_OUTPOST) isn't
+## enough, since that stays set for the whole drive over, well before the
+## drone is anywhere near a capture zone.
+func _is_actively_capturing() -> bool:
+	if unit_type != Constants.UnitType.CAPTURE_DRONE or current_order != Constants.UnitOrder.CAPTURE_OUTPOST:
+		return false
+	for outpost in GameState.outposts:
+		if is_instance_valid(outpost) and outpost.get("team") != team \
+			and global_position.distance_to(outpost.global_position) <= Constants.CAPTURE_RADIUS:
+			return true
+	return false
 
 
 func _update_movement(delta: float) -> void:
@@ -486,13 +513,12 @@ func _formation_rank(type: int) -> int:
 
 ## Clears the .tscn's placeholder MeshInstance3D nodes (every mesh child at
 ## this point is one -- see the per-type .tscn files under scenes/units/)
-## and builds this unit's final-style visual via UnitVisualFactory instead.
-## _body_material becomes the returned "Hull" mesh's own material, a private
-## duplicate UnitVisualFactory made from MaterialLibrary, which
-## _update_flash() below can safely mutate without affecting any other unit
-## sharing the same library material. These are procedural final-style
-## placeholder models -- meant to be swapped for authored Blender assets
-## later without touching Unit.gd beyond this call.
+## and builds this unit's final-style visual via UnitVisualFactory, then
+## hands the result to a fresh UnitAnimator that owns all further per-frame
+## motion/flash/recoil/death animation for this unit (see UnitAnimator.gd).
+## These are procedural final-style placeholder models -- meant to be
+## replaceable by authored Blender assets later without touching Unit.gd
+## beyond this call.
 func _build_visual() -> void:
 	for mesh in find_children("*", "MeshInstance3D", true, false):
 		mesh.queue_free()
@@ -500,9 +526,8 @@ func _build_visual() -> void:
 	_visual_root = UnitVisualFactory.create_visual(unit_type, team)
 	add_child(_visual_root)
 
-	var hull: MeshInstance3D = _visual_root.get_node_or_null("Hull")
-	if hull != null:
-		_body_material = hull.material_override as StandardMaterial3D
+	_animator = UnitAnimator.new()
+	_animator.setup(_visual_root, unit_type, team, muzzle)
 
 
 func _apply_detection_radius() -> void:
@@ -563,29 +588,6 @@ func _create_team_strip() -> void:
 	_team_strip.material_override = material
 	_team_strip.position = Vector3(0.0, TEAM_STRIP_HEIGHT, 0.0)
 	add_child(_team_strip)
-
-
-func _update_flash(delta: float) -> void:
-	if _flash_remaining <= 0.0:
-		return
-	_flash_remaining -= delta
-	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
-
-
-## Fades the whole visual hierarchy uniformly using each mesh's own
-## per-instance transparency (a GeometryInstance3D property, distinct from
-## the material's alpha) rather than mutating any material -- several parts
-## deliberately share MaterialLibrary resources directly (see
-## UnitVisualFactory), so mutating a material's alpha here would fade every
-## other unit using that same shared material too.
-func _update_wreck(delta: float) -> void:
-	_wreck_remaining -= delta
-	var fade: float = 1.0 - clamp(_wreck_remaining / WRECK_FADE_DURATION, 0.0, 1.0)
-	if _visual_root != null:
-		for mesh in _visual_root.find_children("*", "MeshInstance3D", true, false):
-			(mesh as MeshInstance3D).transparency = fade
-	if _wreck_remaining <= 0.0:
-		queue_free()
 
 
 func _own_commander() -> Node:

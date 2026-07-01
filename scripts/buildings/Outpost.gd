@@ -9,11 +9,6 @@ const RELOAD_RATE: float = 4.0
 const DELIVERY_DELAY: float = 2.5
 const HEALTH_BAR_HEIGHT: float = 5.3
 const HEALTH_BAR_SIZE: Vector3 = Vector3(2.4, 0.25, 0.25)
-const RING_ROTATION_SPEED: float = 0.4
-const RING_PULSE_SPEED: float = 6.0
-const RING_PULSE_SCALE: float = 0.08
-const RING_PULSE_EMISSION_BASE: float = 1.5
-const RING_PULSE_EMISSION_AMPLITUDE: float = 0.5
 
 ## Outposts can only produce lighter/support units, unlike the HQ which builds everything.
 const BUILDABLE_UNIT_TYPES: Array[int] = [
@@ -37,13 +32,10 @@ var capture_progress_enemy: float = 0.0
 var capture_radius: float = Constants.CAPTURE_RADIUS
 var unit_delivery_queue: Array = []
 var _delivery_timer: float = 0.0
-var _body_material: StandardMaterial3D
-var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
-var _ring_material: StandardMaterial3D
-var _ring_mesh: MeshInstance3D = null
 var _visual_root: Node3D = null
+var _animator: BuildingAnimator = null
 
 @onready var capture_zone: Area3D = $CaptureZone
 @onready var capture_zone_shape: CollisionShape3D = $CaptureZone/CollisionShape3D
@@ -71,14 +63,16 @@ func _physics_process(delta: float) -> void:
 	_update_progress_bar()
 	_update_supply(delta)
 	_update_delivery(delta)
-	_update_flash(delta)
 	_update_health_bar()
-	_update_ring_animation(delta)
+	var is_contested: bool = capture_zone.is_contested()
+	var is_being_captured: bool = capture_zone.get_capturing_team() != -1 and not is_contested
+	_animator.update(delta, hp / max_hp if max_hp > 0.0 else 0.0, false,
+		is_contested, is_being_captured, max(capture_progress_player, capture_progress_enemy))
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
 	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
-	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
+	_animator.on_damaged()
 	EventBus.building_damaged.emit(self, amount, attacker)
 	if hp <= 0.0:
 		_destroy()
@@ -107,18 +101,8 @@ func reload_commander(commander: Node, delta: float) -> void:
 
 
 func update_team_material() -> void:
-	if _body_material != null:
-		_body_material.albedo_color = Constants.team_color(team)
+	_animator.set_team(team)
 	_health_bar_material.albedo_color = Constants.team_color(team)
-	if _ring_material != null:
-		# MaterialLibrary's emissive accents are intentionally brighter than
-		# Constants.team_color() (a flat body tint), so re-derive from the
-		# same source the factory used initially rather than
-		# Constants.team_color() directly -- otherwise a captured outpost's
-		# ring color would shift on every recapture instead of matching.
-		var emissive_source: StandardMaterial3D = MaterialLibrary.emissive_for_team(team)
-		_ring_material.albedo_color = emissive_source.albedo_color
-		_ring_material.emission = emissive_source.emission
 
 
 func can_produce(unit_type: int) -> bool:
@@ -248,14 +232,12 @@ func _destroy() -> void:
 
 ## Clears the .tscn's placeholder TowerMesh/RingMesh (ProgressBarMesh stays
 ## -- it's a gameplay overlay, not part of the structural visual) and builds
-## this outpost's final-style visual via BuildingVisualFactory.
-## _body_material/_ring_material become the returned "Hull"/"CaptureRing"
-## meshes' own materials, private duplicates BuildingVisualFactory made from
-## MaterialLibrary: update_team_material()/_update_flash() mutate
-## _body_material, and _update_ring_animation() below mutates _ring_material
-## every frame while contested. This is a procedural final-style placeholder
-## model -- meant to be replaced by an authored Blender asset later without
-## touching any other system.
+## this outpost's final-style visual via BuildingVisualFactory, then hands
+## the result to a fresh BuildingAnimator that owns all further per-frame
+## motion/flash/ring animation for this outpost (see BuildingAnimator.gd).
+## This is a procedural final-style placeholder model -- meant to be
+## replaced by an authored Blender asset later without touching any other
+## system.
 func _build_visual() -> void:
 	var old_tower: Node = get_node_or_null("TowerMesh")
 	if old_tower != null:
@@ -267,13 +249,8 @@ func _build_visual() -> void:
 	_visual_root = BuildingVisualFactory.create_outpost_visual(team)
 	add_child(_visual_root)
 
-	var hull: MeshInstance3D = _visual_root.get_node_or_null("Hull")
-	if hull != null:
-		_body_material = hull.material_override as StandardMaterial3D
-
-	_ring_mesh = _visual_root.get_node_or_null("CaptureRing")
-	if _ring_mesh != null:
-		_ring_material = _ring_mesh.material_override as StandardMaterial3D
+	_animator = BuildingAnimator.new()
+	_animator.setup(_visual_root, Constants.BuildingType.OUTPOST, team)
 
 
 ## Built in code rather than the .tscn (like Unit.gd's order label/health
@@ -298,29 +275,3 @@ func _update_health_bar() -> void:
 	_health_bar.visible = ratio < 1.0
 	if _health_bar.visible:
 		_health_bar.scale.x = clamp(ratio, 0.05, 1.0)
-
-
-func _update_flash(delta: float) -> void:
-	if _flash_remaining <= 0.0:
-		return
-	_flash_remaining -= delta
-	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
-
-
-## Ring always turns slowly so a contested outpost reads as "alive" even
-## when idle; it additionally pulses brighter/larger while actively being
-## captured (a capturing team exists and the zone isn't deadlocked/contested).
-func _update_ring_animation(delta: float) -> void:
-	if _ring_mesh == null:
-		return
-	_ring_mesh.rotate_y(RING_ROTATION_SPEED * delta)
-
-	var being_captured: bool = capture_zone.get_capturing_team() != -1 and not capture_zone.is_contested()
-	if not being_captured:
-		_ring_mesh.scale = Vector3.ONE
-		_ring_material.emission_energy_multiplier = 1.0
-		return
-
-	var pulse: float = sin(Time.get_ticks_msec() / 1000.0 * RING_PULSE_SPEED)
-	_ring_mesh.scale = Vector3.ONE * (1.0 + pulse * RING_PULSE_SCALE)
-	_ring_material.emission_energy_multiplier = RING_PULSE_EMISSION_BASE + pulse * RING_PULSE_EMISSION_AMPLITUDE

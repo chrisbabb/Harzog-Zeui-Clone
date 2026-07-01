@@ -21,11 +21,10 @@ var building_type: int = Constants.BuildingType.HQ
 var hp: float
 var unit_delivery_queue: Array = []
 var _delivery_timer: float = 0.0
-var _body_material: StandardMaterial3D
-var _flash_remaining: float = 0.0
 var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
 var _visual_root: Node3D = null
+var _animator: BuildingAnimator = null
 
 @onready var spawn_point: Marker3D = $SpawnPoint
 
@@ -42,8 +41,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_update_supply(delta)
 	_update_delivery(delta)
-	_update_flash(delta)
 	_update_health_bar()
+	_animator.update(delta, hp / max_hp if max_hp > 0.0 else 0.0, get_queue_size() > 0)
 
 
 func setup(new_team: int, new_position: Vector3) -> void:
@@ -53,7 +52,7 @@ func setup(new_team: int, new_position: Vector3) -> void:
 
 func take_damage(amount: float, attacker: Node = null) -> void:
 	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
-	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
+	_animator.on_damaged()
 	EventBus.building_damaged.emit(self, amount, attacker)
 	if hp <= 0.0:
 		_destroy()
@@ -130,8 +129,7 @@ func _update_delivery(delta: float) -> void:
 
 
 func update_team_material() -> void:
-	if _body_material != null:
-		_body_material.albedo_color = Constants.team_color(team)
+	_animator.set_team(team)
 	_health_bar_material.albedo_color = Constants.team_color(team)
 
 
@@ -188,12 +186,11 @@ func _update_health_bar() -> void:
 
 
 ## Clears the .tscn's placeholder BodyMesh/TowerMesh and builds this HQ's
-## final-style visual via BuildingVisualFactory. _body_material becomes the
-## returned "Hull" mesh's own material, a private duplicate
-## BuildingVisualFactory made from MaterialLibrary, which
-## update_team_material()/_update_flash() mutate directly. This is a
-## procedural final-style placeholder model -- meant to be replaced by an
-## authored Blender asset later without touching any other system.
+## final-style visual via BuildingVisualFactory, then hands the result to a
+## fresh BuildingAnimator that owns all further per-frame motion/flash
+## animation for this HQ (see BuildingAnimator.gd). This is a procedural
+## final-style placeholder model -- meant to be replaced by an authored
+## Blender asset later without touching any other system.
 func _build_visual() -> void:
 	var old_body: Node = get_node_or_null("BodyMesh")
 	if old_body != null:
@@ -205,13 +202,5 @@ func _build_visual() -> void:
 	_visual_root = BuildingVisualFactory.create_hq_visual(team)
 	add_child(_visual_root)
 
-	var hull: MeshInstance3D = _visual_root.get_node_or_null("Hull")
-	if hull != null:
-		_body_material = hull.material_override as StandardMaterial3D
-
-
-func _update_flash(delta: float) -> void:
-	if _flash_remaining <= 0.0:
-		return
-	_flash_remaining -= delta
-	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
+	_animator = BuildingAnimator.new()
+	_animator.setup(_visual_root, building_type, team)
