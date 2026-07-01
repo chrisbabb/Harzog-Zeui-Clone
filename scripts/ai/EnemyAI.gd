@@ -200,6 +200,7 @@ func _launch_wave() -> void:
 		return
 
 	_log("launching wave with %d units" % wave_units.size())
+	EventBus.enemy_wave_launched.emit(Constants.Team.ENEMY, wave_units.size())
 	for unit in wave_units:
 		# Force ATTACK_BASE regardless of standing order; the decision tick
 		# will revise if the situation changes before the next wave timer.

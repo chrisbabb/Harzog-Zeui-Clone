@@ -13,9 +13,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -220.0
-offset_top = -250.0
+offset_top = -280.0
 offset_right = 220.0
-offset_bottom = 250.0
+offset_bottom = 280.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
 anchor_right = 1.0
@@ -29,13 +29,16 @@ alignment = 1
 
 [node name="TitleLabel" type="Label" parent="Panel/VBoxContainer"]
 horizontal_alignment = 1
-text = "Options"
-theme_override_font_sizes/font_size = 22
+text = "OPTIONS"
+theme_override_font_sizes/font_size = 24
+
+[node name="TitleSeparator" type="HSeparator" parent="Panel/VBoxContainer"]
 
 [node name="MasterVolumeLabel" type="Label" parent="Panel/VBoxContainer"]
 text = "Master Volume"
 
 [node name="MasterVolumeSlider" type="HSlider" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 28.0)
 min_value = 0.0
 max_value = 1.0
 step = 0.05
@@ -45,6 +48,7 @@ value = 1.0
 text = "Music Volume"
 
 [node name="MusicVolumeSlider" type="HSlider" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 28.0)
 min_value = 0.0
 max_value = 1.0
 step = 0.05
@@ -54,21 +58,26 @@ value = 0.6
 text = "SFX Volume"
 
 [node name="SfxVolumeSlider" type="HSlider" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 28.0)
 min_value = 0.0
 max_value = 1.0
 step = 0.05
 value = 0.8
 
 [node name="FullscreenCheckButton" type="CheckButton" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 36.0)
 text = "Fullscreen"
 
 [node name="DifficultyLabel" type="Label" parent="Panel/VBoxContainer"]
 text = "Difficulty"
 
 [node name="DifficultyOptionButton" type="OptionButton" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 36.0)
 
 [node name="CameraShakeCheckButton" type="CheckButton" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 36.0)
 text = "Camera Shake"
 
 [node name="BackButton" type="Button" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0.0, 36.0)
 text = "Back"

@@ -1,10 +1,33 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/Minimap.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/BuildMenu.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CommandMenu.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PauseMenu.tscn" id="5"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq_fill_mine"]
+bg_color = Color(0.35, 0.85, 1.0, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq_fill_enemy"]
+bg_color = Color(1.0, 0.55, 0.15, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_fill"]
+bg_color = Color(0.4, 0.95, 0.55, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fuel_fill"]
+bg_color = Color(1.0, 0.85, 0.25, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ammo_fill"]
+bg_color = Color(1.0, 0.5, 0.25, 0.95)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_portrait"]
+bg_color = Color(0.03, 0.05, 0.08, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.85, 1.0, 0.6)
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1")
@@ -18,28 +41,31 @@ anchor_bottom = 1.0
 mouse_filter = 2
 offset_left = 12.0
 offset_top = 12.0
-offset_right = 264.0
-offset_bottom = 110.0
+offset_right = 268.0
+offset_bottom = 112.0
 
 [node name="M" type="MarginContainer" parent="Root/TopLeft"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_constants/margin_left = 10
+theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
+theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 
 [node name="Box" type="VBoxContainer" parent="Root/TopLeft/M"]
-theme_override_constants/separation = 3
+theme_override_constants/separation = 4
 
 [node name="CreditsLabel" type="Label" parent="Root/TopLeft/M/Box"]
 text = "Credits: 800"
+theme_override_font_sizes/font_size = 17
 
 [node name="IncomeLabel" type="Label" parent="Root/TopLeft/M/Box"]
 text = "Income: +8/s"
+theme_override_font_sizes/font_size = 13
 
 [node name="OutpostsLabel" type="Label" parent="Root/TopLeft/M/Box"]
 text = "Outposts: 0"
+theme_override_font_sizes/font_size = 13
 
 [node name="TopCenter" type="Panel" parent="Root"]
 mouse_filter = 2
@@ -48,7 +74,7 @@ anchor_right = 0.5
 offset_left = -210.0
 offset_top = 12.0
 offset_right = 210.0
-offset_bottom = 78.0
+offset_bottom = 80.0
 
 [node name="M" type="MarginContainer" parent="Root/TopCenter"]
 anchor_right = 1.0
@@ -59,32 +85,33 @@ theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
 [node name="Box" type="VBoxContainer" parent="Root/TopCenter/M"]
-theme_override_constants/separation = 2
+theme_override_constants/separation = 3
 
 [node name="TimerLabel" type="Label" parent="Root/TopCenter/M/Box"]
 horizontal_alignment = 1
 text = "00:00"
+theme_override_font_sizes/font_size = 22
 
 [node name="ObjectiveLabel" type="Label" parent="Root/TopCenter/M/Box"]
 horizontal_alignment = 1
 text = "Capture outposts and destroy the enemy HQ."
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 13
 
 [node name="TopRight" type="Panel" parent="Root"]
 mouse_filter = 2
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -284.0
+offset_left = -288.0
 offset_top = 12.0
 offset_right = -12.0
-offset_bottom = 136.0
+offset_bottom = 140.0
 
 [node name="M" type="MarginContainer" parent="Root/TopRight"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_constants/margin_left = 10
+theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
+theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 
 [node name="Box" type="VBoxContainer" parent="Root/TopRight/M"]
@@ -92,18 +119,22 @@ theme_override_constants/separation = 5
 
 [node name="EnemyHQLabel" type="Label" parent="Root/TopRight/M/Box"]
 text = "Enemy HQ: 3000/3000"
+theme_override_font_sizes/font_size = 13
 
 [node name="EnemyHQBar" type="ProgressBar" parent="Root/TopRight/M/Box"]
 custom_minimum_size = Vector2(0.0, 14.0)
+theme_override_styles/fill = SubResource("StyleBoxFlat_hq_fill_enemy")
 show_percentage = false
 max_value = 3000.0
 value = 3000.0
 
 [node name="PlayerHQLabel" type="Label" parent="Root/TopRight/M/Box"]
 text = "Your HQ: 3000/3000"
+theme_override_font_sizes/font_size = 13
 
 [node name="PlayerHQBar" type="ProgressBar" parent="Root/TopRight/M/Box"]
 custom_minimum_size = Vector2(0.0, 14.0)
+theme_override_styles/fill = SubResource("StyleBoxFlat_hq_fill_mine")
 show_percentage = false
 max_value = 3000.0
 value = 3000.0
@@ -113,8 +144,8 @@ mouse_filter = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 12.0
-offset_top = -244.0
-offset_right = 276.0
+offset_top = -280.0
+offset_right = 280.0
 offset_bottom = -12.0
 
 [node name="M" type="MarginContainer" parent="Root/CommanderPanel"]
@@ -128,11 +159,32 @@ theme_override_constants/margin_bottom = 8
 [node name="Box" type="VBoxContainer" parent="Root/CommanderPanel/M"]
 theme_override_constants/separation = 6
 
-[node name="PanelTitle" type="Label" parent="Root/CommanderPanel/M/Box"]
-text = "COMMANDER"
+[node name="HeaderRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box"]
+theme_override_constants/separation = 8
 
-[node name="ModeLabel" type="Label" parent="Root/CommanderPanel/M/Box"]
+[node name="Portrait" type="Panel" parent="Root/CommanderPanel/M/Box/HeaderRow"]
+custom_minimum_size = Vector2(40.0, 40.0)
+theme_override_styles/panel = SubResource("StyleBoxFlat_portrait")
+
+[node name="HeaderCol" type="VBoxContainer" parent="Root/CommanderPanel/M/Box/HeaderRow"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PanelTitle" type="Label" parent="Root/CommanderPanel/M/Box/HeaderRow/HeaderCol"]
+text = "COMMANDER"
+theme_override_font_sizes/font_size = 16
+
+[node name="ModeRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box/HeaderRow/HeaderCol"]
+theme_override_constants/separation = 6
+
+[node name="ModeIcon" type="ColorRect" parent="Root/CommanderPanel/M/Box/HeaderRow/HeaderCol/ModeRow"]
+custom_minimum_size = Vector2(12.0, 12.0)
+size_flags_vertical = 4
+color = Color(0.75, 0.6, 0.35, 1.0)
+
+[node name="ModeLabel" type="Label" parent="Root/CommanderPanel/M/Box/HeaderRow/HeaderCol/ModeRow"]
 text = "Mode: GROUND"
+theme_override_font_sizes/font_size = 13
 
 [node name="HPRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box"]
 theme_override_constants/separation = 8
@@ -140,10 +192,12 @@ theme_override_constants/separation = 8
 [node name="HPLabel" type="Label" parent="Root/CommanderPanel/M/Box/HPRow"]
 custom_minimum_size = Vector2(44.0, 0.0)
 text = "HP"
+theme_override_font_sizes/font_size = 13
 
 [node name="HPBar" type="ProgressBar" parent="Root/CommanderPanel/M/Box/HPRow"]
 custom_minimum_size = Vector2(0.0, 14.0)
 size_flags_horizontal = 3
+theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
 show_percentage = false
 max_value = 500.0
 value = 500.0
@@ -154,10 +208,12 @@ theme_override_constants/separation = 8
 [node name="FuelLabel" type="Label" parent="Root/CommanderPanel/M/Box/FuelRow"]
 custom_minimum_size = Vector2(44.0, 0.0)
 text = "Fuel"
+theme_override_font_sizes/font_size = 13
 
 [node name="FuelBar" type="ProgressBar" parent="Root/CommanderPanel/M/Box/FuelRow"]
 custom_minimum_size = Vector2(0.0, 14.0)
 size_flags_horizontal = 3
+theme_override_styles/fill = SubResource("StyleBoxFlat_fuel_fill")
 show_percentage = false
 max_value = 100.0
 value = 100.0
@@ -168,16 +224,19 @@ theme_override_constants/separation = 8
 [node name="AmmoLabel" type="Label" parent="Root/CommanderPanel/M/Box/AmmoRow"]
 custom_minimum_size = Vector2(44.0, 0.0)
 text = "Ammo"
+theme_override_font_sizes/font_size = 13
 
 [node name="AmmoBar" type="ProgressBar" parent="Root/CommanderPanel/M/Box/AmmoRow"]
 custom_minimum_size = Vector2(0.0, 14.0)
 size_flags_horizontal = 3
+theme_override_styles/fill = SubResource("StyleBoxFlat_ammo_fill")
 show_percentage = false
 max_value = 80.0
 value = 80.0
 
 [node name="CarryingLabel" type="Label" parent="Root/CommanderPanel/M/Box"]
 text = "Carrying: None"
+theme_override_font_sizes/font_size = 13
 
 [node name="BottomCenter" type="Panel" parent="Root"]
 mouse_filter = 2
@@ -186,7 +245,7 @@ anchor_right = 0.5
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = -220.0
-offset_top = -108.0
+offset_top = -172.0
 offset_right = 220.0
 offset_bottom = -12.0
 
@@ -204,14 +263,18 @@ theme_override_constants/separation = 4
 [node name="SelectedUnitLabel" type="Label" parent="Root/BottomCenter/M/Box"]
 horizontal_alignment = 1
 text = ""
+theme_override_font_sizes/font_size = 13
 
 [node name="SelectedOrderLabel" type="Label" parent="Root/BottomCenter/M/Box"]
 horizontal_alignment = 1
 text = ""
+theme_override_font_sizes/font_size = 13
 
-[node name="FeedbackLabel" type="Label" parent="Root/BottomCenter/M/Box"]
-horizontal_alignment = 1
-text = ""
+[node name="NotifSep" type="HSeparator" parent="Root/BottomCenter/M/Box"]
+
+[node name="NotificationList" type="VBoxContainer" parent="Root/BottomCenter/M/Box"]
+theme_override_constants/separation = 2
+alignment = 2
 
 [node name="Minimap" parent="." instance=ExtResource("2")]
 anchor_left = 1.0
@@ -240,7 +303,7 @@ anchor_bottom = 1.0
 [node name="Background" type="ColorRect" parent="MatchEnd"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.65)
+color = Color(0, 0, 0, 0.72)
 
 [node name="Panel" type="Panel" parent="MatchEnd"]
 anchor_left = 0.5
@@ -267,14 +330,14 @@ theme_override_constants/separation = 14
 [node name="ResultLabel" type="Label" parent="MatchEnd/Panel/M/Box"]
 horizontal_alignment = 1
 text = "VICTORY"
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 30
 
 [node name="Sep1" type="HSeparator" parent="MatchEnd/Panel/M/Box"]
 
 [node name="Stats" type="GridContainer" parent="MatchEnd/Panel/M/Box"]
 columns = 2
 theme_override_constants/h_separation = 28
-theme_override_constants/v_separation = 5
+theme_override_constants/v_separation = 6
 
 [node name="TimeKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
 text = "Time Elapsed:"
@@ -313,9 +376,9 @@ alignment = 1
 theme_override_constants/separation = 16
 
 [node name="RematchButton" type="Button" parent="MatchEnd/Panel/M/Box/Buttons"]
-custom_minimum_size = Vector2(120.0, 0.0)
+custom_minimum_size = Vector2(130.0, 0.0)
 text = "Rematch"
 
 [node name="MainMenuButton" type="Button" parent="MatchEnd/Panel/M/Box/Buttons"]
-custom_minimum_size = Vector2(120.0, 0.0)
+custom_minimum_size = Vector2(130.0, 0.0)
 text = "Main Menu"

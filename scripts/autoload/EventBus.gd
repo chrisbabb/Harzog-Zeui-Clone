@@ -23,6 +23,8 @@ signal commander_died(commander: Node)
 signal match_started
 signal match_ended(winning_team: int)
 
+signal enemy_wave_launched(attacking_team: int, unit_count: int)
+
 signal build_menu_requested(team: int)
 signal command_menu_requested(team: int)
 # team: -1 = broadcast to all players

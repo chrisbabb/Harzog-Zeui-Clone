@@ -71,6 +71,18 @@ const UNIT_ORDER_ABBREVIATIONS: Dictionary = {
 	UnitOrder.SUPPORT_ALLIES: "SUP",
 }
 
+# One-line flavor/clarity text for UnitOrder, shown on the command menu's
+# tactical list rows.
+const UNIT_ORDER_DESCRIPTIONS: Dictionary = {
+	UnitOrder.HOLD_POSITION: "Stay put and engage only what comes into range.",
+	UnitOrder.PATROL_RADIUS: "Loop around the current position, watching for threats.",
+	UnitOrder.ADVANCE_TO_TARGET: "Push toward the marked objective.",
+	UnitOrder.ATTACK_BASE: "March on the enemy HQ.",
+	UnitOrder.CAPTURE_OUTPOST: "Seize the nearest uncaptured or enemy outpost.",
+	UnitOrder.DEFEND_OUTPOST: "Hold the nearest friendly outpost.",
+	UnitOrder.SUPPORT_ALLIES: "Follow and resupply nearby friendly units.",
+}
+
 # Economy
 const STARTING_MONEY: int = 800
 const BASE_INCOME_PER_SECOND: int = 8
