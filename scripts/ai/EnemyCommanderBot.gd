@@ -28,9 +28,7 @@ const AIR_MODE_PROJECTILE_SPEED: float = 45.0
 const GROUND_MODE_PROJECTILE_SPEED: float = 30.0
 const PROJECTILE_RANGE: float = 40.0
 const PROJECTILE_FORWARD_OFFSET: float = 1.2
-const MUZZLE_FLASH_DURATION: float = 0.08
-const MUZZLE_FLASH_SIZE: float = 0.35
-const MUZZLE_FLASH_COLOR: Color = Color(1.0, 0.9, 0.5)
+const MUZZLE_FLASH_SIZE: float = 1.4
 
 const TEAM_STRIP_OUTER_RADIUS: float = 1.05
 const TEAM_STRIP_INNER_RADIUS: float = 0.85
@@ -83,8 +81,6 @@ var _logistics_timer: float = 0.0
 var _fire_cooldown: float = 0.0
 var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
-var _muzzle_flash: MeshInstance3D
-var _muzzle_flash_remaining: float = 0.0
 var _contrail_particles: GPUParticles3D
 var _dust_particles: GPUParticles3D
 
@@ -95,7 +91,6 @@ var _dust_particles: GPUParticles3D
 
 func _ready() -> void:
 	_apply_team_color()
-	_create_muzzle_flash()
 	_create_team_strip()
 	_create_contrail_particles()
 	_create_dust_particles()
@@ -113,7 +108,6 @@ func _physics_process(delta: float) -> void:
 	global_position = NavigationManager.clamp_to_battlefield(global_position)
 	_update_height(delta)
 	_update_flash(delta)
-	_update_muzzle_flash(delta)
 	_update_particle_visuals()
 
 
@@ -439,7 +433,7 @@ func _try_fire(target_pos: Vector3) -> void:
 	ammo -= AMMO_FIRE_COST
 	_fire_cooldown = FIRE_COOLDOWN
 	_spawn_projectile(target_pos)
-	_trigger_muzzle_flash()
+	_trigger_muzzle_flash(target_pos)
 	EventBus.audio_event_requested.emit("commander_fire")
 
 
@@ -460,9 +454,16 @@ func _spawn_projectile(target_pos: Vector3) -> void:
 	projectile.set("source", self)
 
 
-func _trigger_muzzle_flash() -> void:
-	_muzzle_flash.visible = true
-	_muzzle_flash_remaining = MUZZLE_FLASH_DURATION
+## Mirrors _spawn_projectile()'s own fire-direction math (toward target_pos,
+## not the bot's own facing) so the flash lines up with where the shot
+## actually leaves from.
+func _trigger_muzzle_flash(target_pos: Vector3) -> void:
+	var fire_dir: Vector3 = Vector3(target_pos.x - global_position.x, 0.0,
+		target_pos.z - global_position.z).normalized()
+	VFXManager.spawn_muzzle_flash(
+		global_position + fire_dir * PROJECTILE_FORWARD_OFFSET,
+		fire_dir, team, MUZZLE_FLASH_SIZE
+	)
 
 
 # ---------------------------------------------------------------------------
@@ -493,37 +494,12 @@ func _apply_team_color() -> void:
 	air_mesh.material_override = _body_material
 
 
-func _create_muzzle_flash() -> void:
-	_muzzle_flash = MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = MUZZLE_FLASH_SIZE
-	mesh.height = MUZZLE_FLASH_SIZE * 2.0
-	_muzzle_flash.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.emission_enabled = true
-	mat.albedo_color = MUZZLE_FLASH_COLOR
-	mat.emission = MUZZLE_FLASH_COLOR
-	_muzzle_flash.material_override = mat
-	_muzzle_flash.position = Vector3(0.0, 0.0, -PROJECTILE_FORWARD_OFFSET)
-	_muzzle_flash.visible = false
-	add_child(_muzzle_flash)
-
-
 func _update_flash(delta: float) -> void:
 	if _flash_remaining <= 0.0:
 		return
 	_flash_remaining -= delta
 	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR \
 		if _flash_remaining > 0.0 else Constants.team_color(team)
-
-
-func _update_muzzle_flash(delta: float) -> void:
-	if _muzzle_flash_remaining <= 0.0:
-		return
-	_muzzle_flash_remaining -= delta
-	if _muzzle_flash_remaining <= 0.0:
-		_muzzle_flash.visible = false
 
 
 ## A glowing team-colored ring at the commander's base, built in code like

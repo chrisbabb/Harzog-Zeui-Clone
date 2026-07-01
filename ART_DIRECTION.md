@@ -83,7 +83,7 @@ everything else exists to support them without competing for attention.
 | **Metal** (obstacles/hulls) | Dark blue-gray | `#6B6157` | `(0.42, 0.38, 0.34)` | `MapGenerator.OBSTACLE_COLOR` |
 | **Energy — cyan** | Bright cyan | `#59D9FF` | `(0.35, 0.85, 1.0)` | shared with player projectiles |
 | **Energy — orange** | Hot orange | `#FF731A` | `(1.0, 0.45, 0.1)` | `Explosion.LARGE_COLOR` |
-| **Energy — white** | Muzzle flash | `#FFE680` | `(1.0, 0.9, 0.5)` | `Commander.MUZZLE_FLASH_COLOR` |
+| **Energy — white/yellow** | Neutral capture-adjacent VFX | `#FFD933` | `(1.0, 0.85, 0.2)` | `MaterialLibrary.warning_yellow()`, reused by `VFXManager` for neutral-team effects |
 | **Danger — red** | Enemy red | `#FF4D33` | `(1.0, 0.3, 0.2)` | shared with `COLOR_ENEMY` |
 | **Danger — yellow** | Alert yellow | `#FFD933` | `(1.0, 0.85, 0.2)` | shared with neutral utility |
 | Sky / void | Deep navy | `#0A0D17` | `(0.04, 0.05, 0.09, 1)` | `WorldEnvironment.background_color` |
@@ -209,13 +209,16 @@ role.
 
 | Effect | Style | Status |
 | --- | --- | --- |
-| Muzzle flashes | Short (`0.08s`), bright, unshaded warm-white sphere | Implemented (`Commander`/`EnemyCommanderBot`/analogous unit fire). |
-| Energy projectiles | Colorful, fully emissive, team-colored (cyan/orange); artillery shells arc and glow brighter | Implemented (`Projectile.gd`). |
-| Small unit explosions | Compact fireball + spark burst | Implemented (`Explosion.setup(false)`). |
-| Larger building explosions | Bigger, longer, brighter fireball + spark burst | Implemented (`Explosion.setup(true)`, triggered whenever the hit body is a `StaticBody3D`). |
-| Dust trails for ground units | Kicked-up dust while moving on the ground | Implemented for the **commander** only (`Commander`/`EnemyCommanderBot` `_create_dust_particles()`); **not yet implemented on regular units** (`Unit.gd` has no particle system at all — see TODO). |
-| Contrails for the air commander | Faint trailing streak while airborne | Implemented for the commander (both player and AI). |
-| Capture beams / rings | Pulsing ring is implemented; a beam from capturer to structure is not | Ring: done (see [Animation Style](#7-animation-style)). Beam: not yet built — see TODO. |
+| Muzzle flashes | Short (`~0.08s`), team-colored (cyan/orange/neutral-yellow) pop, sized per weapon class | Implemented via `VFXManager.spawn_muzzle_flash()` (`Commander`/`EnemyCommanderBot`/`UnitAnimator`), replacing the old fixed warm-white sphere each of those used to build privately. |
+| Energy projectiles | Colorful, fully emissive, team-colored (cyan/orange); artillery shells arc and glow brighter; leave a short trailing streak | Implemented (`Projectile.gd`; trail via `VFXManager.spawn_projectile_trail()`). |
+| Small unit explosions | Compact fireball + spark burst | Implemented (`Explosion.setup(false)` for projectile impacts; `VFXManager.spawn_explosion_small()` for unit deaths). |
+| Larger building explosions | Bigger, longer, brighter fireball + spark burst, triggers camera shake | Implemented (`Explosion.setup(true)` for impacts; `VFXManager.spawn_explosion_large()` on HQ/Outpost destruction). |
+| Damage sparks | Quick directionless spark burst at the hit point, team-colored | Implemented (`VFXManager.spawn_damage_sparks()`, triggered by `UnitAnimator`/`BuildingAnimator` on every hit). |
+| Dust trails / contrails | Kicked-up dust while moving on the ground; faint trailing streak while airborne or in flight | Implemented for the commander (`Commander`/`EnemyCommanderBot`) and for projectile trails. `VFXManager.spawn_dust_trail()`/`spawn_contrail()` exist as general-purpose effects; not yet wired to regular ground units' movement. |
+| Capture beams / rings | Pulsing ring on the structure; a from-unit-to-structure beam | Ring: done (see [Animation Style](#7-animation-style)). Beam: `VFXManager.spawn_capture_beam()` is implemented and available; not auto-triggered anywhere yet since the ring pulse alone already communicates capture progress. |
+| Repair beams | Short repeating pulse of energy toward whatever's being repaired | Implemented (`VFXManager.spawn_repair_beam()`, pulsed periodically by a Supply Truck's `UnitAnimator` while repairing). |
+| Spawn warp | Collapsing energy column + upward burst as a unit materializes | Implemented (`VFXManager.spawn_spawn_warp()`, triggered on unit spawn). |
+| Shield hit | Quick expanding ring flash at an impact point | `VFXManager.spawn_shield_hit()` is implemented and available; no gameplay shield mechanic exists yet to trigger it. |
 
 ## 10. Audio Style
 

@@ -69,6 +69,8 @@ func _initialize() -> void:
 	else:
 		mesh_instance.material_override = _get_shared_material()
 
+	VFXManager.spawn_projectile_trail(self)
+
 
 func _get_shared_material() -> StandardMaterial3D:
 	if team == Constants.Team.PLAYER:

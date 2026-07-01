@@ -226,6 +226,7 @@ func _update_delivery(delta: float) -> void:
 
 func _destroy() -> void:
 	EventBus.building_destroyed.emit(self)
+	VFXManager.spawn_explosion_large(global_position)
 	GameState.outposts.erase(self)
 	queue_free()
 

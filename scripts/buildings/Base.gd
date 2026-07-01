@@ -157,6 +157,7 @@ func _heal(target: Node, amount: float) -> void:
 
 func _destroy() -> void:
 	EventBus.building_destroyed.emit(self)
+	VFXManager.spawn_explosion_large(global_position)
 	var winning_team: int = GameState.get_enemy_team(team)
 	GameState.end_match(winning_team)
 	queue_free()

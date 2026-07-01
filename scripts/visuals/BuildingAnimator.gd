@@ -217,6 +217,7 @@ func _update_outpost(delta: float, is_contested: bool, is_being_captured: bool, 
 
 func on_damaged() -> void:
 	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
+	VFXManager.spawn_damage_sparks(_visual_root.global_position, _team)
 
 
 ## Re-tints the hull (and, for an Outpost, the capture ring/ownership core)

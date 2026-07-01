@@ -51,9 +51,9 @@ const LEG_BOB_AMOUNT: float = 0.08
 const BODY_SWAY_SPEED: float = 2.5
 const BODY_SWAY_AMOUNT: float = 0.035
 
-const MUZZLE_FLASH_DURATION: float = 0.07
-const MUZZLE_FLASH_SIZE: float = 0.22
-const MUZZLE_FLASH_COLOR: Color = Color(1.0, 0.9, 0.5)
+const MUZZLE_FLASH_SIZE_LIGHT: float = 0.7
+const MUZZLE_FLASH_SIZE_NORMAL: float = 1.0
+const MUZZLE_FLASH_SIZE_HEAVY: float = 1.4
 
 const WRECK_FADE_DURATION: float = 5.0
 const DEATH_SINK_DISTANCE: float = 0.35
@@ -64,9 +64,7 @@ const DEATH_SMOKE_SIZE: float = 0.4
 
 const REPAIR_DISH_SPIN_SPEED: float = 2.4
 const REPAIR_DISH_IDLE_SPIN_SPEED: float = 0.3
-const REPAIR_BEAM_AMOUNT: int = 10
-const REPAIR_BEAM_LIFETIME: float = 0.5
-const REPAIR_BEAM_PARTICLE_SIZE: float = 0.12
+const REPAIR_PULSE_INTERVAL: float = 0.4
 
 const CAPTURE_DISH_SPIN_SPEED: float = 3.2
 const CAPTURE_DISH_IDLE_SPIN_SPEED: float = 0.4
@@ -96,8 +94,6 @@ var _bob_amount_moving: float = IDLE_BOB_AMOUNT
 var _wheels: Array[Node3D] = []
 var _wheel_spin_rate: float = DEFAULT_WHEEL_SPIN_RATE
 
-var _muzzle_flash: MeshInstance3D
-var _muzzle_flash_remaining: float = 0.0
 var _fire_origin_node: Node3D = null
 var _muzzle_marker: Node3D = null
 
@@ -127,7 +123,7 @@ var _leg_rest_y_left: float = 0.0
 var _leg_rest_y_right: float = 0.0
 
 var _repair_dish: Node3D = null
-var _repair_beam: GPUParticles3D = null
+var _repair_pulse_timer: float = 0.0
 
 var _capture_dish: Node3D = null
 var _capture_beam: GPUParticles3D = null
@@ -153,8 +149,6 @@ func setup(visual_root: Node3D, unit_type: int, team: int, muzzle_marker: Node3D
 	_hull_mesh = _visual_root.get_node_or_null("Hull")
 	if _hull_mesh != null:
 		_hull_material = _hull_mesh.material_override as StandardMaterial3D
-
-	_create_muzzle_flash()
 
 	match unit_type:
 		Constants.UnitType.SCOUT_BUGGY:
@@ -225,14 +219,6 @@ func _setup_anti_air() -> void:
 
 func _setup_supply_truck() -> void:
 	_repair_dish = _visual_root.get_node_or_null("RepairDish")
-	_repair_beam = GPUParticles3D.new()
-	_repair_beam.amount = REPAIR_BEAM_AMOUNT
-	_repair_beam.lifetime = REPAIR_BEAM_LIFETIME
-	_repair_beam.local_coords = false
-	_repair_beam.emitting = false
-	_repair_beam.draw_pass_1 = _make_particle_quad(REPAIR_BEAM_PARTICLE_SIZE)
-	_repair_beam.process_material = _make_repair_beam_material(MaterialLibrary.energy_blue().albedo_color)
-	_visual_root.add_child(_repair_beam)
 
 
 func _setup_capture_drone() -> void:
@@ -271,7 +257,6 @@ func _setup_heavy_walker() -> void:
 func update(delta: float, is_moving: bool, target: Node = null, support_target: Node = null, is_capturing: bool = false) -> void:
 	_time += delta
 	_update_flash(delta)
-	_update_muzzle_flash(delta)
 	_update_idle_motion(is_moving)
 	_update_wheels(delta, is_moving)
 
@@ -488,6 +473,11 @@ func _update_walker(delta: float, is_moving: bool) -> void:
 # Supply Truck repair dish + beam
 # ---------------------------------------------------------------------------
 
+## Rather than a continuously re-aimed persistent particle stream, this fires
+## a short VFXManager.spawn_repair_beam() pulse toward whatever's being
+## repaired every REPAIR_PULSE_INTERVAL seconds -- simpler to keep correct
+## than a per-frame-mutated ParticleProcessMaterial, and reads as a
+## "heartbeat" of repair energy rather than a laser.
 func _update_supply_truck(delta: float, support_target: Node) -> void:
 	var is_repairing: bool = support_target != null and is_instance_valid(support_target)
 
@@ -495,21 +485,16 @@ func _update_supply_truck(delta: float, support_target: Node) -> void:
 		var spin_speed: float = REPAIR_DISH_SPIN_SPEED if is_repairing else REPAIR_DISH_IDLE_SPIN_SPEED
 		_repair_dish.rotate_y(spin_speed * delta)
 
-	if _repair_beam == null:
-		return
-	_repair_beam.emitting = is_repairing
 	if not is_repairing:
+		_repair_pulse_timer = 0.0
 		return
 
+	_repair_pulse_timer -= delta
+	if _repair_pulse_timer > 0.0:
+		return
+	_repair_pulse_timer = REPAIR_PULSE_INTERVAL
 	var origin: Vector3 = _repair_dish.global_position if _repair_dish != null else _visual_root.global_position
-	_repair_beam.global_position = origin
-	var to_target: Vector3 = support_target.global_position - origin
-	var distance: float = to_target.length()
-	var mat: ParticleProcessMaterial = _repair_beam.process_material as ParticleProcessMaterial
-	mat.direction = (to_target / distance) if distance > 0.01 else Vector3.FORWARD
-	var speed: float = distance / max(_repair_beam.lifetime, 0.01)
-	mat.initial_velocity_min = speed
-	mat.initial_velocity_max = speed
+	VFXManager.spawn_repair_beam(origin, support_target.global_position)
 
 
 # ---------------------------------------------------------------------------
@@ -528,38 +513,24 @@ func _update_capture_drone(delta: float, is_capturing: bool) -> void:
 # Muzzle flash
 # ---------------------------------------------------------------------------
 
-func _create_muzzle_flash() -> void:
-	_muzzle_flash = MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = MUZZLE_FLASH_SIZE
-	mesh.height = MUZZLE_FLASH_SIZE * 2.0
-	_muzzle_flash.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.emission_enabled = true
-	material.albedo_color = MUZZLE_FLASH_COLOR
-	material.emission = MUZZLE_FLASH_COLOR
-	_muzzle_flash.material_override = material
-	_muzzle_flash.visible = false
-	# top_level so a one-shot flash doesn't inherit this frame's idle-bob/sway
-	# offset on _visual_root and drift while it's fading out.
-	_muzzle_flash.top_level = true
-	_visual_root.add_child(_muzzle_flash)
-
-
+## Direction is approximated as "fire origin minus hull center" -- close
+## enough for a small flash's orientation without needing to extract the
+## turret's exact aim basis. Position falls back to the unit's static Muzzle
+## marker for types with no tracked barrel (see get_fire_origin()).
 func _trigger_muzzle_flash() -> void:
 	var fallback: Vector3 = _muzzle_marker.global_position if _muzzle_marker != null else _visual_root.global_position
-	_muzzle_flash.global_position = get_fire_origin(fallback)
-	_muzzle_flash.visible = true
-	_muzzle_flash_remaining = MUZZLE_FLASH_DURATION
+	var position: Vector3 = get_fire_origin(fallback)
+	VFXManager.spawn_muzzle_flash(position, position - _visual_root.global_position, _team, _muzzle_flash_size())
 
 
-func _update_muzzle_flash(delta: float) -> void:
-	if _muzzle_flash_remaining <= 0.0:
-		return
-	_muzzle_flash_remaining -= delta
-	if _muzzle_flash_remaining <= 0.0:
-		_muzzle_flash.visible = false
+func _muzzle_flash_size() -> float:
+	match _unit_type:
+		Constants.UnitType.ARTILLERY, Constants.UnitType.HEAVY_WALKER:
+			return MUZZLE_FLASH_SIZE_HEAVY
+		Constants.UnitType.SCOUT_BUGGY, Constants.UnitType.ANTI_AIR:
+			return MUZZLE_FLASH_SIZE_LIGHT
+		_:
+			return MUZZLE_FLASH_SIZE_NORMAL
 
 
 # ---------------------------------------------------------------------------
@@ -589,6 +560,7 @@ func on_fire() -> void:
 
 func on_damaged() -> void:
 	_flash_remaining = Constants.DAMAGE_FLASH_DURATION
+	VFXManager.spawn_damage_sparks(_visual_root.global_position, _team)
 
 
 ## Returns the live world-space position projectiles should spawn from --
@@ -609,6 +581,7 @@ func on_death() -> void:
 	# re-walking the whole visual hierarchy every frame for the 5s fade.
 	for node in _visual_root.find_children("*", "MeshInstance3D", true, false):
 		_wreck_meshes.append(node as MeshInstance3D)
+	VFXManager.spawn_explosion_small(_visual_root.global_position)
 	_spawn_death_sparks()
 	_spawn_death_smoke()
 
@@ -701,19 +674,6 @@ static func _make_smoke_material() -> ParticleProcessMaterial:
 	material.scale_min = 0.8
 	material.scale_max = 1.6
 	material.color_ramp = _make_fade_gradient(MaterialLibrary.smoke_dark().albedo_color)
-	return material
-
-
-static func _make_repair_beam_material(color: Color) -> ParticleProcessMaterial:
-	var material := ParticleProcessMaterial.new()
-	material.direction = Vector3.FORWARD
-	material.spread = 6.0
-	material.initial_velocity_min = 1.0
-	material.initial_velocity_max = 1.0
-	material.gravity = Vector3.ZERO
-	material.scale_min = 0.4
-	material.scale_max = 0.8
-	material.color_ramp = _make_fade_gradient(color)
 	return material
 
 

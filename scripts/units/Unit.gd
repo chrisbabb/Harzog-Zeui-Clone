@@ -91,6 +91,10 @@ func _ready() -> void:
 	_refresh_order_target()
 	_update_order_label()
 	EventBus.unit_created.emit(self)
+	# Deferred: whoever spawned this unit (Base.gd/Outpost.gd's
+	# deliver_next_unit()) sets global_position AFTER add_child(), so
+	# reading it here in _ready() itself would use the wrong location.
+	call_deferred("_trigger_spawn_warp")
 
 
 func _physics_process(delta: float) -> void:
@@ -106,6 +110,10 @@ func _physics_process(delta: float) -> void:
 	_update_health_bar()
 	_animator.update(delta, velocity.length() > 0.1, current_enemy_target,
 		_find_active_support_target(), _is_actively_capturing())
+
+
+func _trigger_spawn_warp() -> void:
+	VFXManager.spawn_spawn_warp(global_position, team)
 
 
 func give_order(order: int, target_position: Vector3 = Vector3.ZERO, target_building: Node = null) -> void:

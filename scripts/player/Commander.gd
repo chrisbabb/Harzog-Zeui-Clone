@@ -42,9 +42,7 @@ const GROUND_MODE_PROJECTILE_SPEED: float = 30.0
 const PROJECTILE_RANGE: float = 40.0
 const GROUND_CLOSE_AIR_HIT_RANGE: float = 6.0
 
-const MUZZLE_FLASH_DURATION: float = 0.08
-const MUZZLE_FLASH_SIZE: float = 0.35
-const MUZZLE_FLASH_COLOR: Color = Color(1.0, 0.9, 0.5)
+const MUZZLE_FLASH_SIZE: float = 1.4
 
 const CONTRAIL_PARTICLE_AMOUNT: int = 24
 const CONTRAIL_LIFETIME: float = 0.6
@@ -85,8 +83,6 @@ var _joy_prev_transform: bool = false
 var _joy_prev_pickup: bool = false
 var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
-var _muzzle_flash: MeshInstance3D
-var _muzzle_flash_remaining: float = 0.0
 var _contrail_particles: GPUParticles3D
 var _dust_particles: GPUParticles3D
 
@@ -97,7 +93,6 @@ var _dust_particles: GPUParticles3D
 
 func _ready() -> void:
 	_apply_team_color()
-	_create_muzzle_flash()
 	_create_team_strip()
 	_create_contrail_particles()
 	_create_dust_particles()
@@ -153,7 +148,6 @@ func _update_timers(delta: float) -> void:
 	if _fire_cooldown_remaining > 0.0:
 		_fire_cooldown_remaining -= delta
 	_update_flash(delta)
-	_update_muzzle_flash(delta)
 
 
 func _handle_gameplay_input() -> void:
@@ -357,36 +351,8 @@ func _update_flash(delta: float) -> void:
 	_body_material.albedo_color = Constants.DAMAGE_FLASH_COLOR if _flash_remaining > 0.0 else Constants.team_color(team)
 
 
-## Built in code rather than the .tscn, like Unit.gd's order label/health
-## bar, so Commander.tscn stays untouched. A small unshaded sphere a step
-## ahead of the hull, only shown for an instant right after firing.
-func _create_muzzle_flash() -> void:
-	_muzzle_flash = MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = MUZZLE_FLASH_SIZE
-	mesh.height = MUZZLE_FLASH_SIZE * 2.0
-	_muzzle_flash.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.emission_enabled = true
-	material.albedo_color = MUZZLE_FLASH_COLOR
-	material.emission = MUZZLE_FLASH_COLOR
-	_muzzle_flash.material_override = material
-	_muzzle_flash.position = Vector3(0.0, 0.0, -PROJECTILE_FORWARD_OFFSET)
-	_muzzle_flash.visible = false
-	add_child(_muzzle_flash)
-
-
-func _update_muzzle_flash(delta: float) -> void:
-	if _muzzle_flash_remaining <= 0.0:
-		return
-	_muzzle_flash_remaining -= delta
-	if _muzzle_flash_remaining <= 0.0:
-		_muzzle_flash.visible = false
-
-
-## A glowing team-colored ring at the commander's base, built in code like
-## the muzzle flash above so Commander.tscn stays untouched.
+## A glowing team-colored ring at the commander's base, built in code so
+## Commander.tscn stays untouched.
 func _create_team_strip() -> void:
 	var strip := MeshInstance3D.new()
 	var mesh := TorusMesh.new()
@@ -552,6 +518,17 @@ func _try_fire() -> void:
 	EventBus.audio_event_requested.emit("commander_fire")
 
 
+## Approximates _spawn_projectile()'s fire direction (without its air-mode
+## random spread, which the flash doesn't need to match exactly) so the
+## flash appears at roughly the same spot the shot actually left from.
+func _trigger_muzzle_flash() -> void:
+	var fire_direction: Vector3 = -global_transform.basis.z
+	VFXManager.spawn_muzzle_flash(
+		global_position + fire_direction * PROJECTILE_FORWARD_OFFSET,
+		fire_direction, team, MUZZLE_FLASH_SIZE
+	)
+
+
 func _spawn_projectile() -> void:
 	var is_air_mode: bool = mode == Constants.CommanderMode.AIR
 	var fire_direction: Vector3 = -global_transform.basis.z
@@ -569,11 +546,6 @@ func _spawn_projectile() -> void:
 	projectile.set("can_hit_air", is_air_mode or _enemy_commander_is_close())
 	projectile.set("can_hit_ground", true)
 	projectile.set("source", self)
-
-
-func _trigger_muzzle_flash() -> void:
-	_muzzle_flash.visible = true
-	_muzzle_flash_remaining = MUZZLE_FLASH_DURATION
 
 
 ## GROUND mode normally can't hit air targets, but an enemy commander
