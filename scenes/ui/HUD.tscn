@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/Minimap.tscn" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/CommandMenu.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PauseMenu.tscn" id="5"]
 [ext_resource type="Script" path="res://scripts/ui/TacticalIcon.gd" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MatchResultPanel.tscn" id="7"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq_fill_mine"]
 bg_color = Color(0.35, 0.85, 1.0, 0.95)
@@ -305,90 +306,5 @@ visible = false
 [node name="PauseMenu" parent="." instance=ExtResource("5")]
 visible = false
 
-[node name="MatchEnd" type="Control" parent="."]
+[node name="MatchResultPanel" parent="." instance=ExtResource("7")]
 visible = false
-anchor_right = 1.0
-anchor_bottom = 1.0
-
-[node name="Background" type="ColorRect" parent="MatchEnd"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.72)
-
-[node name="Panel" type="Panel" parent="MatchEnd"]
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -280.0
-offset_top = -220.0
-offset_right = 280.0
-offset_bottom = 220.0
-
-[node name="M" type="MarginContainer" parent="MatchEnd/Panel"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 24
-
-[node name="Box" type="VBoxContainer" parent="MatchEnd/Panel/M"]
-alignment = 1
-theme_override_constants/separation = 14
-
-[node name="ResultLabel" type="Label" parent="MatchEnd/Panel/M/Box"]
-horizontal_alignment = 1
-text = "VICTORY"
-theme_override_font_sizes/font_size = 30
-
-[node name="Sep1" type="HSeparator" parent="MatchEnd/Panel/M/Box"]
-
-[node name="Stats" type="GridContainer" parent="MatchEnd/Panel/M/Box"]
-columns = 2
-theme_override_constants/h_separation = 28
-theme_override_constants/v_separation = 6
-
-[node name="TimeKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "Time Elapsed:"
-
-[node name="TimeLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "00:00"
-
-[node name="BuiltKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "Units Built:"
-
-[node name="BuiltLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "0"
-
-[node name="LostKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "Units Lost:"
-
-[node name="LostLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "0"
-
-[node name="DestroyedKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "Units Destroyed:"
-
-[node name="DestroyedLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "0"
-
-[node name="CapturedKey" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "Outposts Captured:"
-
-[node name="CapturedLabel" type="Label" parent="MatchEnd/Panel/M/Box/Stats"]
-text = "0"
-
-[node name="Sep2" type="HSeparator" parent="MatchEnd/Panel/M/Box"]
-
-[node name="Buttons" type="HBoxContainer" parent="MatchEnd/Panel/M/Box"]
-alignment = 1
-theme_override_constants/separation = 16
-
-[node name="RematchButton" type="Button" parent="MatchEnd/Panel/M/Box/Buttons"]
-custom_minimum_size = Vector2(130.0, 0.0)
-text = "Rematch"
-
-[node name="MainMenuButton" type="Button" parent="MatchEnd/Panel/M/Box/Buttons"]
-custom_minimum_size = Vector2(130.0, 0.0)
-text = "Main Menu"

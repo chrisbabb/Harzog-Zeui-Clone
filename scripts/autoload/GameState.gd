@@ -6,6 +6,11 @@ extends Node
 var match_active: bool = false
 var elapsed_time: float = 0.0
 
+# True while MatchCinematics is running an intro/end sequence: the player
+# commander ignores input, Game.gd stops driving the camera, and the HUD
+# ignores menu hotkeys. Stays true from match end until the scene changes.
+var cinematic_active: bool = false
+
 var player_hq: Node = null
 var enemy_hq: Node = null
 var outposts: Array[Node] = []
@@ -60,7 +65,13 @@ func start_match() -> void:
 	EventBus.match_started.emit()
 
 
+## Single-fire by design: the guard makes a second call (both HQs dying in
+## the same engagement, or one HQ absorbing two lethal hits in one frame) a
+## no-op, so match_ended can never be emitted twice -- and never with a
+## contradictory winner.
 func end_match(winning_team: int) -> void:
+	if not match_active:
+		return
 	match_active = false
 	winner = winning_team
 	EventBus.match_ended.emit(winning_team)
@@ -157,6 +168,7 @@ func set_selected_order(team: int, order: int) -> void:
 
 func reset_match_state() -> void:
 	match_active = false
+	cinematic_active = false
 	elapsed_time = 0.0
 	player_hq = null
 	enemy_hq = null

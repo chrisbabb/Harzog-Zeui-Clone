@@ -1,7 +1,9 @@
 extends Node3D
 ## Gameplay scene controller.
-## Spawns both commanders, starts the match, and keeps the camera rig smoothly
-## following the player commander within the arena bounds.
+## Spawns both commanders, hands the opening moments to MatchCinematics'
+## intro sequence (the match -- AI, income, clock, player control -- only
+## starts once that finishes or is skipped), and keeps the camera rig
+## smoothly following the player commander within the arena bounds.
 ## Handles 15-second respawn for whichever commander dies, unless that
 ## team's HQ is already destroyed (in which case the match is already over).
 
@@ -13,6 +15,7 @@ const SHAKE_DECAY_PER_SEC: float = 6.0
 
 @onready var world_root: Node3D = $WorldRoot
 @onready var camera_rig: Node3D = $CameraRig
+@onready var match_cinematics: Node = $MatchCinematics
 
 var commander: Node3D = null
 var _player_respawn_timer: float = 0.0
@@ -22,7 +25,6 @@ var _shake_strength: float = 0.0
 
 
 func _ready() -> void:
-	Engine.time_scale = Constants.MATCH_SPEED_MULTIPLIERS.get(GameState.selected_match_speed, 1.0)
 	EventBus.commander_died.connect(_on_commander_died)
 	EventBus.camera_shake_requested.connect(_on_camera_shake_requested)
 	MapGenerator.generate_battlefield(self)
@@ -30,10 +32,22 @@ func _ready() -> void:
 	_spawn_enemy_commander()
 	_follow_position = _clamp_to_arena(commander.global_position)
 	camera_rig.global_position = _follow_position
+	# The intro runs at time_scale 1.0; the chosen match speed and
+	# GameState.start_match() are applied in _on_intro_finished.
+	match_cinematics.intro_finished.connect(_on_intro_finished)
+	match_cinematics.play_intro()
+
+
+func _on_intro_finished() -> void:
+	Engine.time_scale = Constants.MATCH_SPEED_MULTIPLIERS.get(GameState.selected_match_speed, 1.0)
 	GameState.start_match()
 
 
 func _process(delta: float) -> void:
+	# MatchCinematics owns the camera during the intro and end sequences.
+	if GameState.cinematic_active:
+		return
+
 	if not is_instance_valid(commander):
 		commander = null
 	if commander != null:

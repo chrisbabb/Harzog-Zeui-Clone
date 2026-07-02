@@ -5,7 +5,6 @@ extends CanvasLayer
 ## instance with a different team value so signals and polling are filtered
 ## per-player.
 
-const FEEDBACK_DURATION: float = 4.0
 const HUD_POLL_INTERVAL: float = 0.1
 const CREDITS_LERP_SPEED: float = 5.0
 const LOW_FUEL_RATIO: float = 0.2 ## Mirrors AudioManager.LOW_FUEL_RATIO.
@@ -24,8 +23,8 @@ var _units_built: int = 0
 var _units_lost: int = 0
 var _units_destroyed: int = 0
 var _outposts_captured: int = 0
+var _commander_deaths: int = 0
 
-var _feedback_timer: float = 0.0
 var _hud_poll_timer: float = 0.0
 var _prev_unit_type: int = -1
 var _prev_order: int = -1
@@ -56,15 +55,7 @@ var _hq_attack_notification_timer: float = 0.0
 @onready var _selected_unit_label: Label = $Root/BottomCenter/M/Box/SelectedUnitLabel
 @onready var _selected_order_label: Label = $Root/BottomCenter/M/Box/SelectedOrderLabel
 @onready var _notification_list: VBoxContainer = $Root/BottomCenter/M/Box/NotificationList
-@onready var _match_end: Control = $MatchEnd
-@onready var _result_label: Label = $MatchEnd/Panel/M/Box/ResultLabel
-@onready var _time_label: Label = $MatchEnd/Panel/M/Box/Stats/TimeLabel
-@onready var _built_label: Label = $MatchEnd/Panel/M/Box/Stats/BuiltLabel
-@onready var _lost_label: Label = $MatchEnd/Panel/M/Box/Stats/LostLabel
-@onready var _destroyed_label: Label = $MatchEnd/Panel/M/Box/Stats/DestroyedLabel
-@onready var _captured_label: Label = $MatchEnd/Panel/M/Box/Stats/CapturedLabel
-@onready var _rematch_button: Button = $MatchEnd/Panel/M/Box/Buttons/RematchButton
-@onready var _main_menu_button: Button = $MatchEnd/Panel/M/Box/Buttons/MainMenuButton
+@onready var _result_panel: Control = $MatchResultPanel
 @onready var _pause_menu: Control = $PauseMenu
 @onready var _commander_panel: Panel = $Root/CommanderPanel
 @onready var _top_left: Panel = $Root/TopLeft
@@ -83,10 +74,8 @@ func _ready() -> void:
 	EventBus.unit_destroyed.connect(_on_unit_destroyed)
 	EventBus.hud_message.connect(_on_hud_message)
 	EventBus.enemy_wave_launched.connect(_on_enemy_wave_launched)
+	EventBus.commander_died.connect(_on_commander_died)
 	EventBus.match_ended.connect(_on_match_ended)
-
-	_rematch_button.pressed.connect(_on_rematch_pressed)
-	_main_menu_button.pressed.connect(_on_main_menu_pressed)
 
 	UIThemeFactory.apply_team_accent(_commander_panel, team)
 	UIThemeFactory.apply_team_accent(_top_left, team)
@@ -108,9 +97,6 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _feedback_timer > 0.0:
-		_feedback_timer -= delta
-
 	if _hq_attack_notification_timer > 0.0:
 		_hq_attack_notification_timer -= delta
 
@@ -131,6 +117,11 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# No build/command/order-cycle hotkeys while the intro or end cinematic
+	# has control of the battlefield.
+	if GameState.cinematic_active:
+		return
+
 	var is_local_mp: bool = GameState.game_mode == Constants.GameMode.LOCAL_MULTIPLAYER
 
 	# In local multiplayer P1's HUD ignores joypad events; P2's HUD ignores keyboard/mouse.
@@ -239,6 +230,11 @@ func _on_unit_destroyed(unit: Node) -> void:
 		_units_destroyed += 1
 
 
+func _on_commander_died(commander: Node) -> void:
+	if commander.get("team") == team:
+		_commander_deaths += 1
+
+
 func _on_hud_message(text: String, msg_team: int) -> void:
 	if msg_team != -1 and msg_team != team:
 		return
@@ -269,33 +265,21 @@ func _push_notification(text: String, color: Color) -> void:
 	tween.tween_callback(label.queue_free)
 
 
+## Hands the result off to MatchResultPanel, which waits out the end
+## cinematic's explosion beat before animating its banner/stats in.
 func _on_match_ended(winning_team: int) -> void:
 	get_tree().paused = false
 	_pause_menu.visible = false
 
-	_result_label.text = "VICTORY" if winning_team == team else "DEFEAT"
-	_result_label.add_theme_color_override("font_color",
-		UIThemeFactory.SUCCESS_COLOR if winning_team == team else UIThemeFactory.DANGER_COLOR)
-	_time_label.text = _format_time(GameState.elapsed_time)
-	_built_label.text = str(_units_built)
-	_lost_label.text = str(_units_lost)
-	_destroyed_label.text = str(_units_destroyed)
-	_captured_label.text = str(_outposts_captured)
-	_match_end.visible = true
-
-
-func _on_rematch_pressed() -> void:
-	_match_end.visible = false
-	GameState.reset_match_state()
-	Economy.reset()
-	get_tree().reload_current_scene()
-
-
-func _on_main_menu_pressed() -> void:
-	_match_end.visible = false
-	GameState.reset_match_state()
-	Economy.reset()
-	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+	_result_panel.show_result(winning_team == team, {
+		"duration": GameState.elapsed_time,
+		"built": _units_built,
+		"destroyed": _units_destroyed,
+		"lost": _units_lost,
+		"captured": _outposts_captured,
+		"earned": Economy.get_total_earned(team),
+		"commander_deaths": _commander_deaths,
+	})
 
 
 func _update_timer() -> void:

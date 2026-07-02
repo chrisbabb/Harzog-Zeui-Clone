@@ -19,6 +19,7 @@ const HEALTH_BAR_SIZE: Vector3 = Vector3(4.0, 0.3, 0.3)
 
 var building_type: int = Constants.BuildingType.HQ
 var hp: float
+var is_destroyed: bool = false
 var unit_delivery_queue: Array = []
 var _delivery_timer: float = 0.0
 var _health_bar: MeshInstance3D
@@ -51,6 +52,8 @@ func setup(new_team: int, new_position: Vector3) -> void:
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
+	if is_destroyed:
+		return
 	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
 	_animator.on_damaged()
 	EventBus.building_damaged.emit(self, amount, attacker)
@@ -155,7 +158,13 @@ func _heal(target: Node, amount: float) -> void:
 	target.set("hp", min(max_value, hp_value + amount))
 
 
+## Latched alongside GameState.end_match's own single-fire guard: multiple
+## lethal hits landing on the same frame (before queue_free takes effect)
+## must not emit building_destroyed/end the match more than once.
 func _destroy() -> void:
+	if is_destroyed:
+		return
+	is_destroyed = true
 	EventBus.building_destroyed.emit(self)
 	VFXManager.spawn_explosion_large(global_position)
 	var winning_team: int = GameState.get_enemy_team(team)

@@ -103,6 +103,11 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Frozen while MatchCinematics runs the intro (player must not move
+	# before gaining control) or an end sequence (result freeze-frame).
+	if GameState.cinematic_active:
+		return
+
 	_update_timers(delta)
 	_update_transform_animation()
 

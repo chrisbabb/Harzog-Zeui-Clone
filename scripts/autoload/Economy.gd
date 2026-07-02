@@ -6,6 +6,12 @@ extends Node
 var player_money: float = Constants.STARTING_MONEY
 var enemy_money: float = Constants.STARTING_MONEY
 
+# Cumulative credits gained this match (income, AI bonuses -- any positive
+# delta; spending doesn't subtract). Starting credits are assigned directly
+# in reset() so they never count. Read by the match-end stats panel.
+var player_earned: float = 0.0
+var enemy_earned: float = 0.0
+
 
 func _process(delta: float) -> void:
 	if not GameState.match_active:
@@ -16,10 +22,16 @@ func _process(delta: float) -> void:
 func reset() -> void:
 	player_money = GameState.selected_starting_credits
 	enemy_money = GameState.selected_starting_credits
+	player_earned = 0.0
+	enemy_earned = 0.0
 
 
 func get_money(team: int) -> float:
 	return player_money if team == Constants.Team.PLAYER else enemy_money
+
+
+func get_total_earned(team: int) -> float:
+	return player_earned if team == Constants.Team.PLAYER else enemy_earned
 
 
 func can_afford(team: int, amount: float) -> bool:
@@ -52,6 +64,10 @@ func process_income(delta: float) -> void:
 func _apply_delta(team: int, amount: float) -> void:
 	if team == Constants.Team.PLAYER:
 		player_money += amount
+		if amount > 0.0:
+			player_earned += amount
 	else:
 		enemy_money += amount
+		if amount > 0.0:
+			enemy_earned += amount
 	EventBus.money_changed.emit(team, get_money(team))
