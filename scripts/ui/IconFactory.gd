@@ -345,8 +345,8 @@ static func _rasterize_ring(image: Image, center: Vector2, radius: float, width:
 
 
 static func _rasterize_thick_line(image: Image, a: Vector2, b: Vector2, width: float, color: Color) -> void:
-	var bounds: Array = _pixel_bounds(PackedVector2Array([a, b]), width, image.get_width(), image.get_height())
 	var half_w: float = width * 0.5
+	var bounds: Array = _pixel_bounds(PackedVector2Array([a, b]), half_w, image.get_width(), image.get_height())
 	for y in range(bounds[1], bounds[3] + 1):
 		for x in range(bounds[0], bounds[2] + 1):
 			if _distance_to_segment(Vector2(x + 0.5, y + 0.5), a, b) <= half_w:
