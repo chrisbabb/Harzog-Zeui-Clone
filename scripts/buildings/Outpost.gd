@@ -36,6 +36,7 @@ var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
 var _visual_root: Node3D = null
 var _animator: BuildingAnimator = null
+var _damage_states: DamageStateController = null
 
 @onready var capture_zone: Area3D = $CaptureZone
 @onready var capture_zone_shape: CollisionShape3D = $CaptureZone/CollisionShape3D
@@ -68,6 +69,7 @@ func _physics_process(delta: float) -> void:
 	var is_being_captured: bool = capture_zone.get_capturing_team() != -1 and not is_contested
 	_animator.update(delta, hp / max_hp if max_hp > 0.0 else 0.0, false,
 		is_contested, is_being_captured, max(capture_progress_player, capture_progress_enemy))
+	_damage_states.update(delta, hp / max_hp if max_hp > 0.0 else 0.0)
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
@@ -163,11 +165,17 @@ func _add_capture_progress(capturing_team: int, gain: float) -> float:
 	return capture_progress_enemy
 
 
+## Ownership flips instantly for gameplay (health bar, supply, production),
+## but the lights ride DamageStateController's staged transition: old team
+## lights drop to neutral, a white ring pulse expands, then the new team's
+## palette powers on -- rather than update_team_material()'s instant recolor
+## (which stays in use for the initial spawn).
 func _complete_capture(new_team: int) -> void:
 	team = new_team
 	capture_progress_player = 0.0
 	capture_progress_enemy = 0.0
-	update_team_material()
+	_health_bar_material.albedo_color = Constants.team_color(team)
+	_damage_states.play_capture_transition(team)
 	EventBus.building_captured.emit(self, team)
 
 
@@ -252,6 +260,9 @@ func _build_visual() -> void:
 
 	_animator = BuildingAnimator.new()
 	_animator.setup(_visual_root, Constants.BuildingType.OUTPOST, team)
+
+	_damage_states = DamageStateController.new()
+	_damage_states.setup_building(self, _visual_root, Constants.BuildingType.OUTPOST, team, _animator)
 
 
 ## Built in code rather than the .tscn (like Unit.gd's order label/health

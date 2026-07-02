@@ -22,11 +22,6 @@ const BAY_DOOR_GLOW_SPEED: float = 4.0
 const BAY_DOOR_IDLE_ENERGY: float = 0.0
 const BAY_DOOR_ACTIVE_ENERGY: float = 2.2
 
-const DAMAGE_SMOKE_HP_THRESHOLD: float = 0.5
-const DAMAGE_SMOKE_AMOUNT: int = 8
-const DAMAGE_SMOKE_SIZE: float = 0.45
-const DAMAGE_SMOKE_HEIGHT: float = 4.5
-
 const RING_ROTATION_SPEED: float = 0.4
 const RING_PULSE_SPEED: float = 6.0
 const RING_PULSE_SCALE: float = 0.08
@@ -52,7 +47,6 @@ var _power_core_material: StandardMaterial3D
 var _radar_dish: Node3D = null
 var _bay_door_material: StandardMaterial3D
 var _bay_door_glow: float = 0.0
-var _smoke_particles: GPUParticles3D = null
 
 # Outpost
 var _ring_mesh: MeshInstance3D = null
@@ -109,12 +103,14 @@ func _setup_outpost() -> void:
 # ---------------------------------------------------------------------------
 
 ## is_producing/is_contested/capture_progress are only meaningful for their
-## respective building kind and are cheap to pass unconditionally.
-func update(delta: float, hp_ratio: float, is_producing: bool = false, is_contested: bool = false, is_being_captured: bool = false, capture_progress: float = 0.0) -> void:
+## respective building kind and are cheap to pass unconditionally. hp_ratio
+## is kept in the signature for call-site stability but damage visuals now
+## live in DamageStateController, which polls the same ratio itself.
+func update(delta: float, _hp_ratio: float, is_producing: bool = false, is_contested: bool = false, is_being_captured: bool = false, capture_progress: float = 0.0) -> void:
 	_time += delta
 	_update_flash(delta)
 	if _building_kind == Constants.BuildingType.HQ:
-		_update_hq(delta, hp_ratio, is_producing)
+		_update_hq(delta, is_producing)
 	else:
 		_update_outpost(delta, is_contested, is_being_captured, capture_progress)
 
@@ -127,10 +123,10 @@ func _update_flash(delta: float) -> void:
 
 
 # ---------------------------------------------------------------------------
-# HQ: core pulse, radar spin, bay door glow, damage smoke
+# HQ: core pulse, radar spin, bay door glow
 # ---------------------------------------------------------------------------
 
-func _update_hq(delta: float, hp_ratio: float, is_producing: bool) -> void:
+func _update_hq(delta: float, is_producing: bool) -> void:
 	if _power_core != null:
 		var pulse: float = sin(_time * CORE_PULSE_SPEED)
 		_power_core.scale = Vector3.ONE * (1.0 + pulse * CORE_PULSE_SCALE)
@@ -144,27 +140,6 @@ func _update_hq(delta: float, hp_ratio: float, is_producing: bool) -> void:
 		var target_energy: float = BAY_DOOR_ACTIVE_ENERGY if is_producing else BAY_DOOR_IDLE_ENERGY
 		_bay_door_glow = move_toward(_bay_door_glow, target_energy, BAY_DOOR_GLOW_SPEED * delta)
 		_bay_door_material.emission_energy_multiplier = _bay_door_glow
-
-	_update_damage_smoke(hp_ratio < DAMAGE_SMOKE_HP_THRESHOLD)
-
-
-func _update_damage_smoke(should_smoke: bool) -> void:
-	if should_smoke and _smoke_particles == null:
-		_spawn_damage_smoke()
-	if _smoke_particles != null:
-		_smoke_particles.emitting = should_smoke
-
-
-func _spawn_damage_smoke() -> void:
-	_smoke_particles = GPUParticles3D.new()
-	_smoke_particles.lifetime = 1.4
-	_smoke_particles.local_coords = false
-	_smoke_particles.amount = DAMAGE_SMOKE_AMOUNT
-	_smoke_particles.draw_pass_1 = _make_particle_quad(DAMAGE_SMOKE_SIZE)
-	_smoke_particles.process_material = _make_smoke_material()
-	_smoke_particles.position = Vector3(0.0, DAMAGE_SMOKE_HEIGHT, 0.0)
-	_smoke_particles.emitting = false
-	_visual_root.add_child(_smoke_particles)
 
 
 # ---------------------------------------------------------------------------
@@ -234,41 +209,3 @@ func set_team(team: int) -> void:
 		_ring_material.emission = emissive_source.emission
 	if _bay_door_material != null:
 		_bay_door_material.emission = MaterialLibrary.emissive_for_team(_team).albedo_color
-
-
-# ---------------------------------------------------------------------------
-# Particle helpers (mirrors UnitAnimator/Commander.gd/Explosion.gd's pattern)
-# ---------------------------------------------------------------------------
-
-static func _make_particle_quad(size: float) -> QuadMesh:
-	var mesh := QuadMesh.new()
-	mesh.size = Vector2(size, size)
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.vertex_color_use_as_albedo = true
-	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	mesh.material = material
-	return mesh
-
-
-static func _make_fade_gradient(color: Color) -> GradientTexture1D:
-	var gradient := Gradient.new()
-	gradient.set_color(0, color)
-	gradient.set_color(1, Color(color.r, color.g, color.b, 0.0))
-	var texture := GradientTexture1D.new()
-	texture.gradient = gradient
-	return texture
-
-
-static func _make_smoke_material() -> ParticleProcessMaterial:
-	var material := ParticleProcessMaterial.new()
-	material.direction = Vector3(0.0, 1.0, 0.0)
-	material.spread = 20.0
-	material.initial_velocity_min = 0.4
-	material.initial_velocity_max = 1.0
-	material.gravity = Vector3(0.0, 0.3, 0.0)
-	material.scale_min = 0.9
-	material.scale_max = 1.8
-	material.color_ramp = _make_fade_gradient(MaterialLibrary.smoke_dark().albedo_color)
-	return material

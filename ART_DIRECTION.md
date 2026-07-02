@@ -170,11 +170,17 @@ role.
   ring's scale and emission brightness oscillate (`RING_PULSE_SPEED`)
   whenever a team is actively capturing, and idle-rotates slowly even
   when uncontested (`RING_ROTATION_SPEED`) so it never looks inert.
-- **Buildings smoke when damaged.** Not yet implemented — buildings
-  currently only get a brief full-mesh white damage flash on hit
-  (`DAMAGE_FLASH_DURATION = 0.12s`), with no persistent visual state at
-  low HP. Target: a light smoke/spark particle emitter that kicks in
-  below a HP threshold (see TODO).
+- **Everything smokes when damaged.** Implemented via
+  `DamageStateController` (one per unit/HQ/outpost, layered on the
+  animators): above 70% HP clean; 30–70% brings occasional sparks, light
+  one-sided smoke, and flickering lights; below 30% adds heavier
+  multi-column smoke, alarm-red strobing banners (HQ), blinking
+  emissives, and a mild symmetric speed penalty for units
+  (`CRITICAL_DAMAGE_SPEED_MULTIPLIER`). States are re-derived from the
+  live HP ratio, so repairs visibly clean a target back up. The HQ dies
+  in a staged sequence (internal flashes → main explosion → tower
+  collapse → smoke plume) and outpost captures play a lights-off →
+  neutral pulse → lights-on transition.
 
 ## 8. UI Style
 
@@ -285,9 +291,10 @@ Grouped roughly by area; order within a group is not priority order.
 **Animation**
 - [ ] Add idle bob / engine-vibration micro-animation to `Unit.gd`
       (currently no idle animation on generic units at all).
-- [ ] Add a damage-state smoke/spark particle emitter for buildings
-      (and optionally heavily-damaged units) below a low-HP threshold —
-      today, damage only produces a brief full-mesh white flash.
+- [x] Add a damage-state smoke/spark particle emitter for buildings
+      and heavily-damaged units below HP thresholds — done via
+      `DamageStateController.gd` (tiered smoke/sparks/light-flicker,
+      HQ alarm + staged destruction, outpost capture transition).
 
 **VFX**
 - [ ] Add dust trail particles to regular ground units (`Unit.gd`) to

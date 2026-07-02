@@ -249,9 +249,9 @@ func _spawn_secondary_explosion(explosion_position: Vector3) -> void:
 	VFXManager.spawn_explosion_large(explosion_position)
 
 
-## The exploding HQ is the loser's. Prefer the live node (still valid while
-## match_ended handlers run -- Base.gd frees itself only afterwards) and
-## fall back to the positions cached at intro time.
+## The exploding HQ is the loser's. Prefer the live node (Base.gd now stays
+## in the tree as a collapsing wreck for the whole end sequence) and fall
+## back to the positions cached at intro time.
 func _losing_hq_position(winning_team: int) -> Vector3:
 	var losing_hq: Node = GameState.enemy_hq if winning_team == Constants.Team.PLAYER else GameState.player_hq
 	if losing_hq != null and is_instance_valid(losing_hq):

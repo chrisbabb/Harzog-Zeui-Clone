@@ -23,8 +23,11 @@ static func create_hq_visual(team: int) -> Node3D:
 	_add_cylinder(root, "Tower", 2.0, 2.5, 6.0, Vector3(0.0, 7.6, 0.0),
 		MaterialLibrary.light_metal())
 
+	# Duplicated (not shared): BuildingAnimator pulses this material's
+	# emission energy every frame and DamageStateController blinks/strobes
+	# it while damaged -- both must stay per-HQ, not global.
 	_add_sphere(root, "PowerCore", 1.0, Vector3(0.0, 11.0, 0.0),
-		MaterialLibrary.emissive_for_team(team))
+		MaterialLibrary.emissive_for_team(team).duplicate())
 
 	_add_cylinder(root, "RadarMast", 0.08, 0.08, 2.5, Vector3(1.4, 12.0, 0.0),
 		MaterialLibrary.dark_metal())
@@ -41,10 +44,12 @@ static func create_hq_visual(team: int) -> Node3D:
 		_add_box(root, "WallBlock%d" % i, Vector3(0.6, 0.5, 0.6), block_position,
 			MaterialLibrary.light_metal())
 
+	# Duplicated: DamageStateController re-tints these to alarm red while
+	# the HQ is critically damaged.
 	_add_box(root, "BannerLeft", Vector3(0.05, 2.0, 0.6), Vector3(3.05, 2.6, 0.0),
-		MaterialLibrary.emissive_for_team(team))
+		MaterialLibrary.emissive_for_team(team).duplicate())
 	_add_box(root, "BannerRight", Vector3(0.05, 2.0, 0.6), Vector3(-3.05, 2.6, 0.0),
-		MaterialLibrary.emissive_for_team(team))
+		MaterialLibrary.emissive_for_team(team).duplicate())
 
 	return root
 

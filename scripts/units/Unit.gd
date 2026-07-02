@@ -67,6 +67,7 @@ var _health_bar_show_timer: float = 0.0
 var _team_strip: MeshInstance3D = null
 var _visual_root: Node3D = null
 var _animator: UnitAnimator = null
+var _damage_states: DamageStateController = null
 
 @onready var navigation_agent: NavigationAgent3D = $NavigationAgent3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -83,6 +84,11 @@ func _ready() -> void:
 	_create_order_icon()
 	_create_health_bar()
 	_create_team_strip()
+	# After _create_team_strip() so the strip exists for critical-damage
+	# flicker; polls the hp ratio each frame, so damage AND repair (supply
+	# trucks, HQ/outpost auras) both move it between states.
+	_damage_states = DamageStateController.new()
+	_damage_states.setup_unit(self, _visual_root, team, _team_strip)
 	navigation_agent.path_desired_distance = 0.5
 	navigation_agent.target_desired_distance = Constants.UNIT_NAVIGATION_ARRIVAL_DISTANCE
 	detection_area.body_entered.connect(_on_detection_body_entered)
@@ -114,6 +120,7 @@ func _physics_process(delta: float) -> void:
 	_update_health_bar()
 	_animator.update(delta, velocity.length() > 0.1, current_enemy_target,
 		_find_active_support_target(), _is_actively_capturing())
+	_damage_states.update(delta, hp / max_hp if max_hp > 0.0 else 0.0)
 
 
 func _trigger_spawn_warp() -> void:
@@ -162,6 +169,9 @@ func die() -> void:
 	_order_icon.visible = false
 	if _health_bar != null:
 		_health_bar.visible = false
+	# Damage-state smoke/flicker stops before the strip is force-hidden --
+	# on_death restores flickered nodes, then the lines below hide for good.
+	_damage_states.on_death()
 	if _team_strip != null:
 		_team_strip.visible = false
 	_animator.on_death()
@@ -406,6 +416,7 @@ func _update_movement(delta: float) -> void:
 		return
 
 	var current_speed: float = speed if fuel > 0.0 else speed * SLOW_SPEED_MULTIPLIER
+	current_speed *= _damage_states.movement_multiplier()
 	velocity = direction.normalized() * current_speed
 	move_and_slide()
 	_clamp_to_battlefield()

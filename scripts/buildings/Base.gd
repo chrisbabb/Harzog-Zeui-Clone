@@ -26,6 +26,7 @@ var _health_bar: MeshInstance3D
 var _health_bar_material: StandardMaterial3D
 var _visual_root: Node3D = null
 var _animator: BuildingAnimator = null
+var _damage_states: DamageStateController = null
 
 @onready var spawn_point: Marker3D = $SpawnPoint
 
@@ -40,10 +41,15 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# A destroyed HQ is a wreck mid-destruction-sequence: no more supply,
+	# production, or animation -- only DamageStateController's tween/emitters.
+	if is_destroyed:
+		return
 	_update_supply(delta)
 	_update_delivery(delta)
 	_update_health_bar()
 	_animator.update(delta, hp / max_hp if max_hp > 0.0 else 0.0, get_queue_size() > 0)
+	_damage_states.update(delta, hp / max_hp if max_hp > 0.0 else 0.0)
 
 
 func setup(new_team: int, new_position: Vector3) -> void:
@@ -159,17 +165,20 @@ func _heal(target: Node, amount: float) -> void:
 
 
 ## Latched alongside GameState.end_match's own single-fire guard: multiple
-## lethal hits landing on the same frame (before queue_free takes effect)
-## must not emit building_destroyed/end the match more than once.
+## lethal hits landing on the same frame must not emit building_destroyed or
+## end the match more than once. Destruction is a staged sequence (internal
+## flashes -> main explosion -> collapse -> plume) run by
+## DamageStateController; GameState.end_match fires at the main-explosion
+## beat inside it, and the node deliberately stays in the tree as a wreck
+## behind the match-end screen instead of queue_free-ing.
 func _destroy() -> void:
 	if is_destroyed:
 		return
 	is_destroyed = true
 	EventBus.building_destroyed.emit(self)
-	VFXManager.spawn_explosion_large(global_position)
-	var winning_team: int = GameState.get_enemy_team(team)
-	GameState.end_match(winning_team)
-	queue_free()
+	_health_bar.visible = false
+	unit_delivery_queue.clear()
+	_damage_states.play_hq_destruction(GameState.get_enemy_team(team))
 
 
 ## Built in code rather than the .tscn (like Unit.gd's order label/health
@@ -214,3 +223,6 @@ func _build_visual() -> void:
 
 	_animator = BuildingAnimator.new()
 	_animator.setup(_visual_root, building_type, team)
+
+	_damage_states = DamageStateController.new()
+	_damage_states.setup_building(self, _visual_root, building_type, team, _animator)

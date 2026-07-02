@@ -155,6 +155,11 @@ const MAX_UNITS_PER_TEAM: int = 60
 const DAMAGE_FLASH_DURATION: float = 0.12
 const DAMAGE_FLASH_COLOR: Color = Color(1.0, 1.0, 1.0)
 
+# Units below DamageStateController's critical threshold (< 30% HP) move at
+# this fraction of their speed. Applied identically to both teams and kept
+# deliberately mild so a mauled army limps but stays viable.
+const CRITICAL_DAMAGE_SPEED_MULTIPLIER: float = 0.85
+
 # Generic ground-unit movement defaults, for unit types without a tuned speed yet
 const UNIT_DEFAULT_SPEED: float = 4.0
 const UNIT_NAVIGATION_ARRIVAL_DISTANCE: float = 0.5
