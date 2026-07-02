@@ -196,10 +196,13 @@ role.
   they should gain color transitions at critical thresholds (see
   [Danger palette](#3-color-palette) and TODO) rather than only changing
   length.
-- **Minimap with strong icon readability.** Team-colored dots for units,
-  team-colored squares for HQs/outposts, a white camera-frustum outline —
-  keep new minimap markers to simple filled shapes in team/neutral colors,
-  never fine detail that won't survive an 8Hz-redraw, small-canvas render.
+- **Minimap with strong icon readability.** Team-colored dots for units
+  (color carries the ally/enemy signal at that scale; a 60-a-side unit
+  count rules out per-type detail), `IconFactory` fortress/tower icons for
+  HQs/outposts (few enough on screen to afford real silhouettes), a white
+  camera-frustum outline — keep new minimap markers to simple filled
+  shapes in team/neutral colors, never fine detail that won't survive an
+  8Hz-redraw, small-canvas render.
 - **Command/build menu should feel like a tactical cockpit interface.**
   Numbered/hotkeyed option lists, not a shop grid — every entry reads as
   "issuing an order," reinforced by the eventual dark-panel treatment

@@ -51,7 +51,8 @@ var _hq_attack_notification_timer: float = 0.0
 @onready var _hp_bar: ProgressBar = $Root/CommanderPanel/M/Box/HPRow/HPBar
 @onready var _fuel_bar: ProgressBar = $Root/CommanderPanel/M/Box/FuelRow/FuelBar
 @onready var _ammo_bar: ProgressBar = $Root/CommanderPanel/M/Box/AmmoRow/AmmoBar
-@onready var _carrying_label: Label = $Root/CommanderPanel/M/Box/CarryingLabel
+@onready var _carrying_icon: TacticalIcon = $Root/CommanderPanel/M/Box/CarryingRow/CarryingIcon
+@onready var _carrying_label: Label = $Root/CommanderPanel/M/Box/CarryingRow/CarryingLabel
 @onready var _selected_unit_label: Label = $Root/BottomCenter/M/Box/SelectedUnitLabel
 @onready var _selected_order_label: Label = $Root/BottomCenter/M/Box/SelectedOrderLabel
 @onready var _notification_list: VBoxContainer = $Root/BottomCenter/M/Box/NotificationList
@@ -306,6 +307,7 @@ func _update_commander_panel() -> void:
 	if not is_instance_valid(commander):
 		_hp_bar.value = 0.0
 		_carrying_label.text = "Carrying: None"
+		_carrying_icon.visible = false
 		return
 
 	_hp_bar.value = commander.get("hp") if commander.get("hp") != null else 0.0
@@ -314,8 +316,12 @@ func _update_commander_panel() -> void:
 	if carried != null and is_instance_valid(carried):
 		var unit_type: int = carried.get("unit_type") if carried.get("unit_type") != null else 0
 		_carrying_label.text = "Carrying: %s" % UnitDatabase.get_unit_name(unit_type)
+		_carrying_icon.icon_type = IconFactory.icon_for_unit_type(unit_type)
+		_carrying_icon.team = team
+		_carrying_icon.visible = true
 	else:
 		_carrying_label.text = "Carrying: None"
+		_carrying_icon.visible = false
 
 
 func _update_hq_bars() -> void:

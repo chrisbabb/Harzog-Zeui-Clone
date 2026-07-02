@@ -158,10 +158,11 @@ func _build_card(unit_type: int) -> Button:
 	top_row.add_theme_constant_override("separation", 8)
 	vbox.add_child(top_row)
 
-	var icon := ColorRect.new()
+	var icon := TacticalIcon.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.custom_minimum_size = Vector2(CARD_ICON_SIZE, CARD_ICON_SIZE)
-	icon.color = _role_color(unit_type)
+	icon.icon_type = IconFactory.icon_for_unit_type(unit_type)
+	icon.team = team
 	top_row.add_child(icon)
 
 	var info_col := VBoxContainer.new()
@@ -208,26 +209,6 @@ func _build_card(unit_type: int) -> Button:
 	_status_labels_by_type[unit_type] = status_label
 
 	return card
-
-
-## Flat placeholder "icon" tint standing in for a role silhouette texture
-## until real unit icon art exists.
-func _role_color(unit_type: int) -> Color:
-	match unit_type:
-		Constants.UnitType.SCOUT_BUGGY:
-			return Color(0.4, 0.9, 0.5)  # recon green
-		Constants.UnitType.TANK, Constants.UnitType.HEAVY_WALKER:
-			return Color(0.95, 0.35, 0.3)  # assault red
-		Constants.UnitType.MISSILE_CRAWLER, Constants.UnitType.ANTI_AIR:
-			return Color(0.95, 0.75, 0.25)  # ranged amber
-		Constants.UnitType.ARTILLERY:
-			return Color(0.65, 0.4, 0.9)  # siege purple
-		Constants.UnitType.SUPPLY_TRUCK:
-			return Color(0.35, 0.85, 0.9)  # support cyan
-		Constants.UnitType.CAPTURE_DRONE:
-			return Color(0.9, 0.85, 0.3)  # utility yellow
-		_:
-			return UIThemeFactory.NEUTRAL_ACCENT
 
 
 # ---------------------------------------------------------------------------

@@ -117,18 +117,18 @@ func _draw_buildings() -> void:
 		if not is_instance_valid(outpost):
 			continue
 		var building_team: int = outpost.get("team") if outpost.get("team") != null else Constants.Team.NEUTRAL
-		_draw_building_icon(outpost, Constants.team_color(building_team), _OUTPOST_RECT)
+		_draw_building_icon(outpost, IconFactory.IconType.OUTPOST, Constants.team_color(building_team), _OUTPOST_RECT)
 
 	if GameState.player_hq != null and is_instance_valid(GameState.player_hq):
-		_draw_building_icon(GameState.player_hq, Constants.COLOR_PLAYER, _HQ_RECT)
+		_draw_building_icon(GameState.player_hq, IconFactory.IconType.HQ, Constants.COLOR_PLAYER, _HQ_RECT)
 	if GameState.enemy_hq != null and is_instance_valid(GameState.enemy_hq):
-		_draw_building_icon(GameState.enemy_hq, Constants.COLOR_ENEMY, _HQ_RECT, GameState.match_active)
+		_draw_building_icon(GameState.enemy_hq, IconFactory.IconType.HQ, Constants.COLOR_ENEMY, _HQ_RECT, GameState.match_active)
 
 
-## Diamond icon (rather than an axis-aligned rect) with an optional
+## IconFactory HQ/Outpost icon (rather than a plain rect) with an optional
 ## persistent gentle pulse (the enemy HQ objective marker while the match is
 ## active) and a temporary red attack ring on any building recently hit.
-func _draw_building_icon(building: Node, color: Color, rect_size: float, is_objective: bool = false) -> void:
+func _draw_building_icon(building: Node, icon_type: int, color: Color, rect_size: float, is_objective: bool = false) -> void:
 	var center: Vector2 = _world_to_minimap(building.global_position)
 	var half: float = rect_size * 0.5
 
@@ -137,13 +137,7 @@ func _draw_building_icon(building: Node, color: Color, rect_size: float, is_obje
 		half *= 1.0 + pulse * 0.35
 		color = color.lerp(Color(1.0, 1.0, 1.0), pulse * 0.4)
 
-	var points := PackedVector2Array([
-		center + Vector2(0.0, -half),
-		center + Vector2(half, 0.0),
-		center + Vector2(0.0, half),
-		center + Vector2(-half, 0.0),
-	])
-	draw_colored_polygon(points, color)
+	IconFactory.draw_icon(self, icon_type, Rect2(center - Vector2(half, half), Vector2(half * 2.0, half * 2.0)), color)
 
 	if _under_attack_timers.has(building):
 		var ratio: float = clamp(_under_attack_timers[building] / _UNDER_ATTACK_DURATION, 0.0, 1.0)
@@ -188,6 +182,12 @@ func _draw_camera_rect() -> void:
 		)
 
 
+## Units stay plain team-colored dots rather than per-type IconFactory
+## shapes: up to 60-a-side at a _UNIT_RADIUS this small, a wedge/turret/rack
+## silhouette would be indistinguishable noise, not a readable icon. Color
+## (ally/enemy) is the signal that actually matters at minimap scale;
+## buildings and the commander get full icons/cones since there are only a
+## handful of them and they're drawn bigger.
 func _draw_units() -> void:
 	for unit in get_tree().get_nodes_in_group("units"):
 		if not is_instance_valid(unit) or unit.get("is_destroyed"):

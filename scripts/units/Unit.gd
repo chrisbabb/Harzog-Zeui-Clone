@@ -16,6 +16,8 @@ const SUPPLY_REPAIR_RATE: float = 10.0
 const SUPPLY_REFUEL_RATE: float = 8.0
 const SUPPLY_RELOAD_RATE: float = 3.0
 const ORDER_LABEL_HEIGHT: float = 2.2
+const ORDER_ICON_HEIGHT_OFFSET: float = 0.42
+const ORDER_ICON_PIXEL_SIZE: float = 0.012
 const PROJECTILE_SPEED: float = 28.0
 const ARTILLERY_PROJECTILE_SPEED: float = 16.0
 const ARTILLERY_PROJECTILE_SCALE: float = 1.8
@@ -58,6 +60,7 @@ var is_destroyed: bool = false
 var _nearby_bodies: Array[Node] = []
 var _was_navigation_finished: bool = true
 var _order_label: Label3D = null
+var _order_icon: Sprite3D = null
 var _health_bar: MeshInstance3D = null
 var _health_bar_material: StandardMaterial3D
 var _health_bar_show_timer: float = 0.0
@@ -77,6 +80,7 @@ func _ready() -> void:
 	_build_visual()
 	_apply_detection_radius()
 	_create_order_label()
+	_create_order_icon()
 	_create_health_bar()
 	_create_team_strip()
 	navigation_agent.path_desired_distance = 0.5
@@ -155,6 +159,7 @@ func die() -> void:
 	_nearby_bodies.clear()
 	current_enemy_target = null
 	_order_label.visible = false
+	_order_icon.visible = false
 	if _health_bar != null:
 		_health_bar.visible = false
 	if _team_strip != null:
@@ -551,8 +556,22 @@ func _create_order_label() -> void:
 	add_child(_order_label)
 
 
+## A small billboarded icon above the text abbreviation, generated on the
+## fly via IconFactory since Label3D can only ever display text. Sprite3D
+## rather than a Control since this needs to live in 3D world-space and
+## track the unit through the angled isometric camera like everything else
+## floating above it (order label, health bar, team strip).
+func _create_order_icon() -> void:
+	_order_icon = Sprite3D.new()
+	_order_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_order_icon.pixel_size = ORDER_ICON_PIXEL_SIZE
+	_order_icon.position = Vector3(0.0, ORDER_LABEL_HEIGHT + ORDER_ICON_HEIGHT_OFFSET, 0.0)
+	add_child(_order_icon)
+
+
 func _update_order_label() -> void:
 	_order_label.text = Constants.UNIT_ORDER_ABBREVIATIONS.get(current_order, "")
+	_order_icon.texture = IconFactory.generate_texture(IconFactory.icon_for_order(current_order), UIThemeFactory.team_accent(team))
 
 
 ## Built in code rather than the .tscn (like the order label above) so all

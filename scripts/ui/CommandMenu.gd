@@ -138,11 +138,12 @@ func _build_row(order: int) -> Button:
 	hbox.add_theme_constant_override("separation", 8)
 	margin.add_child(hbox)
 
-	var icon := ColorRect.new()
+	var icon := TacticalIcon.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.custom_minimum_size = Vector2(ROW_ICON_SIZE, ROW_ICON_SIZE)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.color = _order_color(order)
+	icon.icon_type = IconFactory.icon_for_order(order)
+	icon.team = team
 	hbox.add_child(icon)
 
 	var info_col := VBoxContainer.new()
@@ -177,28 +178,6 @@ func _build_row(order: int) -> Button:
 	_cost_labels_by_order[order] = cost_label
 
 	return row
-
-
-## Placeholder icon tint standing in for a per-order glyph until real icon
-## art exists -- distinct hue per order so the list reads at a glance.
-func _order_color(order: int) -> Color:
-	match order:
-		Constants.UnitOrder.HOLD_POSITION:
-			return Color(0.6, 0.65, 0.75)
-		Constants.UnitOrder.PATROL_RADIUS:
-			return Color(0.3, 0.8, 0.75)
-		Constants.UnitOrder.ADVANCE_TO_TARGET:
-			return Color(0.35, 0.7, 0.95)
-		Constants.UnitOrder.ATTACK_BASE:
-			return Color(0.95, 0.4, 0.25)
-		Constants.UnitOrder.CAPTURE_OUTPOST:
-			return Color(0.9, 0.8, 0.3)
-		Constants.UnitOrder.DEFEND_OUTPOST:
-			return Color(0.4, 0.85, 0.5)
-		Constants.UnitOrder.SUPPORT_ALLIES:
-			return Color(0.65, 0.5, 0.9)
-		_:
-			return UIThemeFactory.NEUTRAL_ACCENT
 
 
 # ---------------------------------------------------------------------------

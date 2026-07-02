@@ -1,10 +1,11 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/Minimap.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/BuildMenu.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CommandMenu.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PauseMenu.tscn" id="5"]
+[ext_resource type="Script" path="res://scripts/ui/TacticalIcon.gd" id="6"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq_fill_mine"]
 bg_color = Color(0.35, 0.85, 1.0, 0.95)
@@ -234,7 +235,16 @@ show_percentage = false
 max_value = 80.0
 value = 80.0
 
-[node name="CarryingLabel" type="Label" parent="Root/CommanderPanel/M/Box"]
+[node name="CarryingRow" type="HBoxContainer" parent="Root/CommanderPanel/M/Box"]
+theme_override_constants/separation = 6
+
+[node name="CarryingIcon" type="Control" parent="Root/CommanderPanel/M/Box/CarryingRow"]
+custom_minimum_size = Vector2(16.0, 16.0)
+mouse_filter = 2
+visible = false
+script = ExtResource("6")
+
+[node name="CarryingLabel" type="Label" parent="Root/CommanderPanel/M/Box/CarryingRow"]
 text = "Carrying: None"
 theme_override_font_sizes/font_size = 13
 
