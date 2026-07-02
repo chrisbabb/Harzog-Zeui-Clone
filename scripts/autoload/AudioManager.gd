@@ -34,6 +34,9 @@ const SFX_DEFS: Dictionary = {
 	"defeat": {"frequency": 196.0, "duration": 0.60, "wave": "triangle"},
 	"ui_select": {"frequency": 988.0, "duration": 0.05, "wave": "square"},
 	"ui_cancel": {"frequency": 220.0, "duration": 0.07, "wave": "square"},
+	# Deliberately tiny/short -- fires on every focus change while navigating
+	# menus, so it has to read as a tick, not a beep.
+	"ui_hover": {"frequency": 1318.5, "duration": 0.03, "wave": "sine"},
 }
 
 ## Base filenames looked up under SFX_DIR for each music track. No generated

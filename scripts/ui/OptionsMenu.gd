@@ -30,6 +30,11 @@ func _ready() -> void:
 	camera_shake_check.toggled.connect(_on_camera_shake_toggled)
 	back_button.pressed.connect(_on_back_pressed)
 
+	# Pull keyboard/controller focus into this overlay -- otherwise focus
+	# stays on the menu button underneath, and pressing accept again would
+	# stack a second Options instance instead of navigating this one.
+	master_slider.grab_focus()
+
 
 func _populate_difficulty_options() -> void:
 	for label in DIFFICULTY_LABELS:

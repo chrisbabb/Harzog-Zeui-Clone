@@ -1,10 +1,9 @@
 extends Control
-## One drifting layer of a parallax "abstract map" background (see
-## MainMenu.tscn's Background node, which stacks three of these at
-## different spacing/speed/alpha for a sense of depth). Draws a scrolling
-## grid of lines or dots that loops seamlessly by wrapping the draw offset
-## modulo the cell spacing -- an animated backdrop with no shader and no
-## imported texture.
+## One drifting layer of scrolling grid lines or dots (MainMenu.tscn uses a
+## single faint one as a tactical-readout overlay above the 3D title
+## diorama; stack several at different spacing/speed/alpha for a parallax
+## depth effect). Loops seamlessly by wrapping the draw offset modulo the
+## cell spacing -- an animated layer with no shader and no imported texture.
 
 @export var spacing: float = 100.0
 @export var scroll_velocity: Vector2 = Vector2(-10.0, -5.0)
