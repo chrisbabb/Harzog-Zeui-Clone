@@ -81,7 +81,9 @@ func _process(_delta: float) -> void:
 	ai_label.text = "AI: %s" % _ai_objective_text()
 
 	if is_instance_valid(GameState.player_commander):
-		var pos := GameState.player_commander.global_position
+		# Explicit Vector3: player_commander is typed as plain Node, so
+		# .global_position through it is Variant and := cannot infer.
+		var pos: Vector3 = GameState.player_commander.global_position
 		commander_pos_label.text = "Cmd: (%.1f, %.1f, %.1f)" % [pos.x, pos.y, pos.z]
 	else:
 		commander_pos_label.text = "Cmd: N/A"
@@ -138,7 +140,7 @@ func _spawn_unit(team: int) -> void:
 func _on_capture_nearest_outpost() -> void:
 	if not is_instance_valid(GameState.player_commander):
 		return
-	var cmd_pos := GameState.player_commander.global_position
+	var cmd_pos: Vector3 = GameState.player_commander.global_position
 	var closest: Node = null
 	var closest_dist := INF
 	for o in GameState.outposts:
@@ -146,7 +148,7 @@ func _on_capture_nearest_outpost() -> void:
 			continue
 		if o.get("team") == Constants.Team.PLAYER:
 			continue
-		var d := cmd_pos.distance_to(o.global_position)
+		var d: float = cmd_pos.distance_to(o.global_position)
 		if d < closest_dist:
 			closest_dist = d
 			closest = o
