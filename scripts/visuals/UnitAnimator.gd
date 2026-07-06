@@ -57,6 +57,16 @@ const MUZZLE_FLASH_SIZE_HEAVY: float = 1.4
 
 const WRECK_FADE_DURATION: float = 5.0
 const DEATH_SINK_DISTANCE: float = 0.35
+const WRECK_SPIN_MAX_RATE: float = 1.4
+const WRECK_SPIN_DECAY: float = 1.2
+
+# Squash-and-rebound when the commander drops this unit.
+const DROP_BOUNCE_DURATION: float = 0.35
+const DROP_SQUASH_AMOUNT: float = 0.22
+
+# Brief backward lean when starting to move from a standstill.
+const ANTICIPATION_DURATION: float = 0.18
+const ANTICIPATION_TILT: float = 0.07
 const DEATH_SPARK_AMOUNT: int = 16
 const DEATH_SPARK_SIZE: float = 0.15
 const DEATH_SMOKE_AMOUNT: int = 10
@@ -131,8 +141,13 @@ var _capture_beam: GPUParticles3D = null
 var _is_dead: bool = false
 var _wreck_remaining: float = 0.0
 var _death_sink_start_y: float = 0.0
+var _wreck_spin_rate: float = 0.0
 var _smoke_particles: GPUParticles3D = null
 var _wreck_meshes: Array[MeshInstance3D] = []
+
+var _drop_bounce_remaining: float = 0.0
+var _anticipation_remaining: float = 0.0
+var _was_moving: bool = false
 
 
 # ---------------------------------------------------------------------------
@@ -256,8 +271,13 @@ func _setup_heavy_walker() -> void:
 ## every other type, so Unit.gd can pass them unconditionally.
 func update(delta: float, is_moving: bool, target: Node = null, support_target: Node = null, is_capturing: bool = false) -> void:
 	_time += delta
+	if is_moving and not _was_moving:
+		_anticipation_remaining = ANTICIPATION_DURATION
+	_was_moving = is_moving
 	_update_flash(delta)
 	_update_idle_motion(is_moving)
+	_update_drop_bounce(delta)
+	_update_anticipation(delta)
 	_update_wheels(delta, is_moving)
 
 	if not _turret_parts.is_empty():
@@ -279,6 +299,34 @@ func _update_idle_motion(is_moving: bool) -> void:
 	var speed: float = _bob_speed_moving if is_moving else _bob_speed_idle
 	var amount: float = _bob_amount_moving if is_moving else _bob_amount_idle
 	_visual_root.position.y = sin(_time * speed + _phase) * amount
+
+
+## Damped squash-and-rebound after the commander drops this unit: lands
+## squashed, overshoots tall, settles to rest -- reads as weight.
+func _update_drop_bounce(delta: float) -> void:
+	if _drop_bounce_remaining <= 0.0:
+		return
+	_drop_bounce_remaining -= delta
+	if _drop_bounce_remaining <= 0.0:
+		_visual_root.scale = Vector3.ONE
+		return
+	var progress: float = 1.0 - _drop_bounce_remaining / DROP_BOUNCE_DURATION
+	var squash: float = DROP_SQUASH_AMOUNT * (1.0 - progress) * cos(progress * TAU)
+	_visual_root.scale = Vector3(1.0 + squash * 0.5, 1.0 - squash, 1.0 + squash * 0.5)
+
+
+## Brief backward lean as the unit starts moving from a standstill --
+## anticipation before the push-off. Only rotation.x is touched, so it
+## composes with the walker's rotation.z sway and the idle position bob.
+func _update_anticipation(delta: float) -> void:
+	if _anticipation_remaining <= 0.0:
+		return
+	_anticipation_remaining -= delta
+	if _anticipation_remaining <= 0.0:
+		_visual_root.rotation.x = 0.0
+		return
+	var progress: float = 1.0 - _anticipation_remaining / ANTICIPATION_DURATION
+	_visual_root.rotation.x = ANTICIPATION_TILT * sin(progress * PI)
 
 
 func _update_wheels(delta: float, is_moving: bool) -> void:
@@ -570,12 +618,20 @@ func get_fire_origin(fallback: Vector3) -> Vector3:
 	return _fire_origin_node.global_position if _fire_origin_node != null else fallback
 
 
+## Small squash-bounce triggered by Unit.set_carried(false) when the
+## commander drops this unit back onto the field.
+func on_dropped() -> void:
+	_drop_bounce_remaining = DROP_BOUNCE_DURATION
+
+
 func on_death() -> void:
 	if _is_dead:
 		return
 	_is_dead = true
 	_wreck_remaining = WRECK_FADE_DURATION
 	_death_sink_start_y = _visual_root.position.y
+	# A random decaying spin sells the kill without any physics.
+	_wreck_spin_rate = randf_range(-WRECK_SPIN_MAX_RATE, WRECK_SPIN_MAX_RATE)
 	# Meshes are fixed once the unit is dead (nothing else adds/removes
 	# children afterward), so collect the fade list once here instead of
 	# re-walking the whole visual hierarchy every frame for the 5s fade.
@@ -593,6 +649,8 @@ func update_wreck(delta: float) -> bool:
 	_wreck_remaining -= delta
 	var progress: float = 1.0 - clamp(_wreck_remaining / WRECK_FADE_DURATION, 0.0, 1.0)
 	_visual_root.position.y = _death_sink_start_y - DEATH_SINK_DISTANCE * min(1.0, progress * 3.0)
+	_visual_root.rotation.y += _wreck_spin_rate * delta
+	_wreck_spin_rate = move_toward(_wreck_spin_rate, 0.0, WRECK_SPIN_DECAY * delta)
 	for mesh in _wreck_meshes:
 		mesh.transparency = progress
 	if progress > 0.4 and _smoke_particles != null and _smoke_particles.emitting:

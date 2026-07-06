@@ -48,6 +48,22 @@ const CONTRAIL_PARTICLE_AMOUNT: int = 24
 const CONTRAIL_LIFETIME: float = 0.6
 const CONTRAIL_PARTICLE_SIZE: float = 0.18
 const CONTRAIL_COLOR: Color = Color(0.65, 0.85, 1.0, 0.55)
+# Contrail only appears once actually moving at speed -- a hovering jet
+# shouldn't stream vapor.
+const CONTRAIL_MIN_SPEED: float = 8.0
+
+# AIR-mode banking: the mesh rolls into turns proportionally to yaw rate.
+const BANK_PER_YAW_RATE: float = 0.14
+const MAX_BANK_ANGLE: float = 0.5
+const BANK_SMOOTH_SPEED: float = 7.0
+
+# Engine glow: a small emissive thruster orb whose brightness scales with
+# speed (and reads hotter in AIR mode).
+const ENGINE_GLOW_RADIUS: float = 0.22
+const ENGINE_GLOW_OFFSET: Vector3 = Vector3(0.0, 0.1, 1.05)
+const ENGINE_GLOW_MIN_ENERGY: float = 0.4
+const ENGINE_GLOW_MAX_ENERGY: float = 3.2
+const ENGINE_GLOW_COLOR: Color = Color(0.5, 0.85, 1.0)
 
 const DUST_PARTICLE_AMOUNT: int = 16
 const DUST_LIFETIME: float = 0.5
@@ -85,6 +101,10 @@ var _body_material: StandardMaterial3D
 var _flash_remaining: float = 0.0
 var _contrail_particles: GPUParticles3D
 var _dust_particles: GPUParticles3D
+var _engine_glow_material: StandardMaterial3D
+var _prev_yaw: float = 0.0
+var _bank_angle: float = 0.0
+var _landing_puff_pending: bool = false
 
 @onready var mesh_root: Node3D = $MeshRoot
 @onready var ground_mesh: MeshInstance3D = $MeshRoot/GroundMesh
@@ -96,7 +116,9 @@ func _ready() -> void:
 	_create_team_strip()
 	_create_contrail_particles()
 	_create_dust_particles()
+	_create_engine_glow()
 	_update_mode_visuals()
+	_prev_yaw = rotation.y
 	EventBus.commander_mode_changed.emit(team, mode)
 	EventBus.commander_fuel_changed.emit(team, fuel)
 	EventBus.commander_ammo_changed.emit(team, ammo)
@@ -122,7 +144,9 @@ func _physics_process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, aim_angle, clamp(ROTATION_SPEED * delta, 0.0, 1.0))
 	global_position = NavigationManager.clamp_to_battlefield(global_position)
 	_update_height(delta)
+	_update_banking(delta)
 	_update_particle_visuals()
+	_update_engine_glow()
 
 	if carried_unit != null:
 		carried_unit.global_position = global_position
@@ -320,6 +344,11 @@ func _begin_transform(new_mode: int) -> void:
 	_transform_locked_remaining = Constants.PLAYER_TRANSFORM_TIME
 	# AIR mode flies over units/buildings/terrain instead of clearing their height.
 	collision_mask = 0 if mode == Constants.CommanderMode.AIR else 1
+	EventBus.audio_event_requested.emit("commander_transform")
+	VFXManager.spawn_smoke_puff(global_position)
+	# The touchdown puff fires when this transform finishes, once the
+	# airframe has actually dropped to ground height.
+	_landing_puff_pending = mode == Constants.CommanderMode.GROUND
 	EventBus.commander_mode_changed.emit(team, mode)
 
 
@@ -327,6 +356,9 @@ func _update_transform_animation() -> void:
 	if _transform_locked_remaining <= 0.0:
 		mesh_root.scale = Vector3.ONE
 		_update_mode_visuals()
+		if _landing_puff_pending:
+			_landing_puff_pending = false
+			VFXManager.spawn_smoke_puff(Vector3(global_position.x, 0.4, global_position.z))
 		return
 
 	# Squash peaks at the midpoint of the transform, where the mesh swap also
@@ -402,10 +434,56 @@ func _create_dust_particles() -> void:
 	add_child(_dust_particles)
 
 
+## Rolls the mesh into turns while flying: bank is proportional to the
+## smoothed yaw rate, so straight flight stays level and hard turns lean
+## hard. GROUND mode eases back to level. Only mesh_root rotates -- the
+## body's physics/aim transform stays flat.
+func _update_banking(delta: float) -> void:
+	var yaw_delta: float = wrapf(rotation.y - _prev_yaw, -PI, PI)
+	_prev_yaw = rotation.y
+	var target_bank: float = 0.0
+	if mode == Constants.CommanderMode.AIR and delta > 0.0001:
+		target_bank = clamp((yaw_delta / delta) * BANK_PER_YAW_RATE, -MAX_BANK_ANGLE, MAX_BANK_ANGLE)
+	_bank_angle = lerp(_bank_angle, target_bank, clamp(BANK_SMOOTH_SPEED * delta, 0.0, 1.0))
+	mesh_root.rotation.z = _bank_angle
+
+
 func _update_particle_visuals() -> void:
-	_contrail_particles.emitting = mode == Constants.CommanderMode.AIR
 	var ground_speed: float = Vector3(velocity.x, 0.0, velocity.z).length()
+	_contrail_particles.emitting = mode == Constants.CommanderMode.AIR and ground_speed > CONTRAIL_MIN_SPEED
 	_dust_particles.emitting = mode == Constants.CommanderMode.GROUND and ground_speed > DUST_MOVE_SPEED_THRESHOLD
+
+
+## Thruster orb brightness tracks speed: idle it smolders, at full tilt it
+## burns -- an extra 30% on top while in AIR mode.
+func _update_engine_glow() -> void:
+	if _engine_glow_material == null:
+		return
+	var speed_ratio: float = clamp(
+		Vector3(velocity.x, 0.0, velocity.z).length() / Constants.PLAYER_AIR_SPEED, 0.0, 1.0)
+	var energy: float = lerp(ENGINE_GLOW_MIN_ENERGY, ENGINE_GLOW_MAX_ENERGY, speed_ratio)
+	if mode == Constants.CommanderMode.AIR:
+		energy *= 1.3
+	_engine_glow_material.emission_energy_multiplier = energy
+
+
+## Built in code (like the team strip) so Commander.tscn stays untouched;
+## parented to mesh_root so it banks and squashes with the airframe.
+func _create_engine_glow() -> void:
+	var glow := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = ENGINE_GLOW_RADIUS
+	mesh.height = ENGINE_GLOW_RADIUS * 2.0
+	glow.mesh = mesh
+	_engine_glow_material = StandardMaterial3D.new()
+	_engine_glow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_engine_glow_material.emission_enabled = true
+	_engine_glow_material.albedo_color = ENGINE_GLOW_COLOR
+	_engine_glow_material.emission = ENGINE_GLOW_COLOR
+	_engine_glow_material.emission_energy_multiplier = ENGINE_GLOW_MIN_ENERGY
+	glow.material_override = _engine_glow_material
+	glow.position = ENGINE_GLOW_OFFSET
+	mesh_root.add_child(glow)
 
 
 func _build_particle_quad_mesh(size: float) -> QuadMesh:

@@ -10,6 +10,7 @@ const NOT_IN_RANGE_MESSAGE: String = "Move near a friendly HQ or outpost to orde
 const INSUFFICIENT_FUNDS_MESSAGE: String = "Insufficient credits."
 const UNIT_CAP_MESSAGE: String = "Unit cap reached (%d max)." % Constants.MAX_UNITS_PER_TEAM
 const QUEUE_POLL_INTERVAL: float = 0.25
+const OPEN_ANIMATION_DURATION: float = 0.16
 const DIMMED_ALPHA: float = 0.45
 const CARD_ICON_SIZE: float = 28.0
 const CARD_MIN_HEIGHT: float = 64.0
@@ -26,6 +27,7 @@ var _cards_by_type: Dictionary = {}
 var _card_styles_by_type: Dictionary = {}
 var _status_labels_by_type: Dictionary = {}
 var _selection_tween: Tween
+var _open_tween: Tween
 var _queue_poll_timer: float = 0.0
 
 
@@ -92,9 +94,25 @@ func toggle() -> void:
 func open() -> void:
 	visible = true
 	EventBus.audio_event_requested.emit("ui_select")
+	_play_open_animation()
 	_update_queue_display()
 	if not _cards_by_type.is_empty():
 		_cards_by_type.values()[0].grab_focus()
+
+
+## Quick scale/fade-in punch on the panel; closing stays instant (snappy).
+## Pivot at the panel's left-center so it grows out from the screen edge.
+func _play_open_animation() -> void:
+	if _open_tween != null and _open_tween.is_valid():
+		_open_tween.kill()
+	panel.pivot_offset = Vector2(0.0, panel.size.y * 0.5)
+	panel.modulate.a = 0.0
+	panel.scale = Vector2(0.94, 0.94)
+	_open_tween = create_tween()
+	_open_tween.set_parallel(true)
+	_open_tween.tween_property(panel, "modulate:a", 1.0, OPEN_ANIMATION_DURATION)
+	_open_tween.tween_property(panel, "scale", Vector2.ONE, OPEN_ANIMATION_DURATION) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func close() -> void:

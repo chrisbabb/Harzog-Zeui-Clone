@@ -7,6 +7,7 @@ extends CanvasLayer
 
 const HUD_POLL_INTERVAL: float = 0.1
 const CREDITS_LERP_SPEED: float = 5.0
+const BAR_LERP_SPEED: float = 9.0
 const LOW_FUEL_RATIO: float = 0.2 ## Mirrors AudioManager.LOW_FUEL_RATIO.
 const LOW_AMMO_RATIO: float = 0.2 ## Mirrors AudioManager.LOW_AMMO_RATIO.
 const HQ_ATTACK_NOTIFICATION_COOLDOWN: float = 6.0
@@ -31,6 +32,14 @@ var _prev_order: int = -1
 
 var _displayed_credits: float = 0.0
 var _target_credits: float = 0.0
+
+# Bars ease toward these targets in _process instead of snapping (see
+# _approach_bar); the targets are what the signal handlers/pollers write.
+var _hp_bar_target: float = 0.0
+var _fuel_bar_target: float = 0.0
+var _ammo_bar_target: float = 0.0
+var _enemy_hq_bar_target: float = 0.0
+var _player_hq_bar_target: float = 0.0
 var _was_fuel_low: bool = false
 var _was_ammo_low: bool = false
 var _fuel_warning_tween: Tween = null
@@ -85,6 +94,11 @@ func _ready() -> void:
 	_displayed_credits = Economy.get_money(team)
 	_target_credits = _displayed_credits
 	_credits_label.text = "Credits: %d" % int(_displayed_credits)
+	_hp_bar_target = _hp_bar.value
+	_fuel_bar_target = _fuel_bar.value
+	_ammo_bar_target = _ammo_bar.value
+	_enemy_hq_bar_target = _enemy_hq_bar.value
+	_player_hq_bar_target = _player_hq_bar.value
 	_refresh_outpost_display()
 
 	# In local multiplayer label the commander panel with the player number
@@ -106,6 +120,12 @@ func _process(delta: float) -> void:
 			_displayed_credits = _target_credits
 		_credits_label.text = "Credits: %d" % int(round(_displayed_credits))
 
+	_approach_bar(_hp_bar, _hp_bar_target, delta)
+	_approach_bar(_fuel_bar, _fuel_bar_target, delta)
+	_approach_bar(_ammo_bar, _ammo_bar_target, delta)
+	_approach_bar(_enemy_hq_bar, _enemy_hq_bar_target, delta)
+	_approach_bar(_player_hq_bar, _player_hq_bar_target, delta)
+
 	_hud_poll_timer -= delta
 	if _hud_poll_timer <= 0.0:
 		_hud_poll_timer = HUD_POLL_INTERVAL
@@ -114,6 +134,16 @@ func _process(delta: float) -> void:
 		_update_hq_bars()
 		_update_selected_labels()
 		_refresh_outpost_display()
+
+
+## Exponential ease toward the target so bars visibly drain/refill instead
+## of snapping; snaps the last sliver to avoid an endless asymptote.
+func _approach_bar(bar: ProgressBar, target: float, delta: float) -> void:
+	if is_equal_approx(bar.value, target):
+		return
+	bar.value = lerp(bar.value, target, clamp(delta * BAR_LERP_SPEED, 0.0, 1.0))
+	if absf(bar.value - target) < 0.5:
+		bar.value = target
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -164,7 +194,7 @@ func _on_commander_mode_changed(changed_team: int, mode: int) -> void:
 func _on_commander_fuel_changed(changed_team: int, value: float) -> void:
 	if changed_team != team:
 		return
-	_fuel_bar.value = value
+	_fuel_bar_target = value
 	var is_low: bool = value <= Constants.MAX_PLAYER_FUEL * LOW_FUEL_RATIO
 	if is_low and not _was_fuel_low:
 		_fuel_warning_tween = UIThemeFactory.continuous_pulse(_fuel_bar, 0.45, 1.0, 2.5)
@@ -177,7 +207,7 @@ func _on_commander_fuel_changed(changed_team: int, value: float) -> void:
 func _on_commander_ammo_changed(changed_team: int, value: float) -> void:
 	if changed_team != team:
 		return
-	_ammo_bar.value = value
+	_ammo_bar_target = value
 	var is_low: bool = value <= Constants.MAX_PLAYER_AMMO * LOW_AMMO_RATIO
 	if is_low and not _was_ammo_low:
 		_ammo_warning_tween = UIThemeFactory.continuous_pulse(_ammo_bar, 0.45, 1.0, 2.5)
@@ -289,12 +319,12 @@ func _update_timer() -> void:
 func _update_commander_panel() -> void:
 	var commander: Node = GameState.player_commander if team == Constants.Team.PLAYER else GameState.enemy_commander
 	if not is_instance_valid(commander):
-		_hp_bar.value = 0.0
+		_hp_bar_target = 0.0
 		_carrying_label.text = "Carrying: None"
 		_carrying_icon.visible = false
 		return
 
-	_hp_bar.value = commander.get("hp") if commander.get("hp") != null else 0.0
+	_hp_bar_target = commander.get("hp") if commander.get("hp") != null else 0.0
 
 	var carried: Node = commander.get("carried_unit")
 	if carried != null and is_instance_valid(carried):
@@ -315,12 +345,12 @@ func _update_hq_bars() -> void:
 
 	if opp_hq != null and is_instance_valid(opp_hq):
 		var hp: float = opp_hq.get("hp") if opp_hq.get("hp") != null else Constants.HQ_MAX_HP
-		_enemy_hq_bar.value = hp
+		_enemy_hq_bar_target = hp
 		_enemy_hq_label.text = "Opponent HQ: %d/%d" % [int(hp), int(Constants.HQ_MAX_HP)]
 
 	if my_hq != null and is_instance_valid(my_hq):
 		var hp: float = my_hq.get("hp") if my_hq.get("hp") != null else Constants.HQ_MAX_HP
-		_player_hq_bar.value = hp
+		_player_hq_bar_target = hp
 		_player_hq_label.text = "Your HQ: %d/%d" % [int(hp), int(Constants.HQ_MAX_HP)]
 
 

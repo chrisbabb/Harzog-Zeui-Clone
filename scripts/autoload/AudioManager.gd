@@ -21,6 +21,7 @@ const LOW_AMMO_RATIO: float = 0.2
 ## rather than a clean pitch.
 const SFX_DEFS: Dictionary = {
 	"commander_fire": {"frequency": 880.0, "duration": 0.08, "wave": "square"},
+	"commander_transform": {"frequency": 293.66, "duration": 0.14, "wave": "triangle"},
 	"unit_fire": {"frequency": 660.0, "duration": 0.06, "wave": "square"},
 	"explosion_small": {"frequency": 140.0, "duration": 0.25, "wave": "noise"},
 	"explosion_large": {"frequency": 90.0, "duration": 0.45, "wave": "noise"},

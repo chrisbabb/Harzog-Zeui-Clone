@@ -16,6 +16,8 @@ const SUPPLY_REPAIR_RATE: float = 10.0
 const SUPPLY_REFUEL_RATE: float = 8.0
 const SUPPLY_RELOAD_RATE: float = 3.0
 const ORDER_LABEL_HEIGHT: float = 2.2
+const ORDER_BLIP_SCALE: float = 1.7
+const ORDER_BLIP_DURATION: float = 0.3
 const ORDER_ICON_HEIGHT_OFFSET: float = 0.42
 const ORDER_ICON_PIXEL_SIZE: float = 0.012
 const PROJECTILE_SPEED: float = 28.0
@@ -128,11 +130,14 @@ func _trigger_spawn_warp() -> void:
 
 
 func give_order(order: int, target_position: Vector3 = Vector3.ZERO, target_building: Node = null) -> void:
+	var order_changed: bool = order != current_order
 	current_order = order
 	order_target_position = target_position
 	order_target_building = target_building
 	_refresh_order_target()
 	_update_order_label()
+	if order_changed and not is_destroyed:
+		_blip_order_icon()
 	EventBus.unit_order_changed.emit(self, current_order)
 
 
@@ -147,8 +152,10 @@ func stop() -> void:
 func take_damage(amount: float, attacker: Node = null) -> void:
 	if is_destroyed:
 		return
-	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
+	var applied: float = amount * Constants.armor_multiplier(armor)
+	hp = max(0.0, hp - applied)
 	_animator.on_damaged()
+	VFXManager.spawn_damage_number(global_position + Vector3(0.0, 2.6, 0.0), applied)
 	_health_bar_show_timer = HEALTH_BAR_SHOW_DURATION
 	if hp <= 0.0:
 		die()
@@ -189,6 +196,7 @@ func set_carried(carried: bool) -> void:
 		current_enemy_target = null
 	else:
 		_refresh_order_target()
+		_animator.on_dropped()
 
 
 func _load_stats() -> void:
@@ -583,6 +591,18 @@ func _create_order_icon() -> void:
 func _update_order_label() -> void:
 	_order_label.text = Constants.UNIT_ORDER_ABBREVIATIONS.get(current_order, "")
 	_order_icon.texture = IconFactory.generate_texture(IconFactory.icon_for_order(current_order), UIThemeFactory.team_accent(team))
+
+
+## Order-confirmation blip: the floating order icon punches up and settles
+## whenever this unit is given a NEW order (give_order filters unchanged
+## re-issues, so the enemy AI's periodic re-assertion never spams this).
+func _blip_order_icon() -> void:
+	if _order_icon == null or not is_inside_tree():
+		return
+	var tween: Tween = create_tween()
+	_order_icon.scale = Vector3.ONE * ORDER_BLIP_SCALE
+	tween.tween_property(_order_icon, "scale", Vector3.ONE, ORDER_BLIP_DURATION) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## Built in code rather than the .tscn (like the order label above) so all

@@ -8,6 +8,7 @@ extends Control
 const HOTKEY_KEYCODES: Array[int] = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7]
 const INSUFFICIENT_FUNDS_MESSAGE: String = "Insufficient credits."
 const STATUS_POLL_INTERVAL: float = 0.25
+const OPEN_ANIMATION_DURATION: float = 0.16
 const ROW_ICON_SIZE: float = 22.0
 const ROW_MIN_HEIGHT: float = 52.0
 const COST_TAG_INACTIVE_COLOR: Color = Color(0.7, 0.72, 0.78, 0.5)
@@ -26,6 +27,7 @@ var _rows_by_order: Dictionary = {}
 var _row_styles_by_order: Dictionary = {}
 var _cost_labels_by_order: Dictionary = {}
 var _selection_tween: Tween
+var _open_tween: Tween
 var _status_poll_timer: float = 0.0
 
 
@@ -88,9 +90,25 @@ func toggle() -> void:
 func open() -> void:
 	visible = true
 	EventBus.audio_event_requested.emit("ui_select")
+	_play_open_animation()
 	_update_status_display()
 	if not _rows_by_order.is_empty():
 		_rows_by_order.values()[0].grab_focus()
+
+
+## Quick scale/fade-in punch on the panel; closing stays instant (snappy).
+## Centered pivot since this panel sits mid-screen.
+func _play_open_animation() -> void:
+	if _open_tween != null and _open_tween.is_valid():
+		_open_tween.kill()
+	panel.pivot_offset = panel.size * 0.5
+	panel.modulate.a = 0.0
+	panel.scale = Vector2(0.94, 0.94)
+	_open_tween = create_tween()
+	_open_tween.set_parallel(true)
+	_open_tween.tween_property(panel, "modulate:a", 1.0, OPEN_ANIMATION_DURATION)
+	_open_tween.tween_property(panel, "scale", Vector2.ONE, OPEN_ANIMATION_DURATION) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func close() -> void:

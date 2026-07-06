@@ -34,6 +34,15 @@ const DAMAGE_SPARK_AMOUNT: int = 10
 const DAMAGE_SPARK_LIFETIME: float = 0.35
 const DAMAGE_SPARK_SIZE: float = 0.12
 
+# Floating damage numbers appear only for hits at/above this post-armor
+# damage -- roughly artillery/heavy-walker territory, so the battlefield
+# isn't wallpapered in digits.
+const DAMAGE_NUMBER_MIN_AMOUNT: float = 30.0
+const DAMAGE_NUMBER_PIXEL_SIZE: float = 0.02
+const DAMAGE_NUMBER_RISE: float = 1.6
+const DAMAGE_NUMBER_DURATION: float = 0.8
+const DAMAGE_NUMBER_COLOR: Color = Color(1.0, 0.85, 0.3)
+
 
 func spawn_muzzle_flash(position: Vector3, direction: Vector3, team: int, size: float = 1.0) -> void:
 	var instance: Node3D = _spawn(MUZZLE_FLASH_SCENE, position)
@@ -148,6 +157,36 @@ func spawn_damage_sparks(position: Vector3, team: int) -> void:
 			if is_instance_valid(sparks):
 				sparks.queue_free()
 	)
+
+
+## Floating damage number for BIG hits only: anything below
+## DAMAGE_NUMBER_MIN_AMOUNT is silently skipped, so routine small-arms fire
+## stays clean and only artillery/heavy-caliber impacts get a callout.
+## Callers pass the post-armor applied damage.
+func spawn_damage_number(position: Vector3, amount: float) -> void:
+	if amount < DAMAGE_NUMBER_MIN_AMOUNT:
+		return
+	var root: Node = _get_effects_root()
+	if root == null:
+		return
+
+	var label := Label3D.new()
+	label.text = str(int(round(amount)))
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.pixel_size = DAMAGE_NUMBER_PIXEL_SIZE
+	label.modulate = DAMAGE_NUMBER_COLOR
+	label.outline_modulate = Color(0.0, 0.0, 0.0, 0.9)
+	root.add_child(label)
+	label.global_position = position
+
+	var tween: Tween = label.create_tween()
+	tween.tween_property(label, "global_position",
+		position + Vector3(0.0, DAMAGE_NUMBER_RISE, 0.0), DAMAGE_NUMBER_DURATION) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, DAMAGE_NUMBER_DURATION) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(label.queue_free)
 
 
 # ---------------------------------------------------------------------------

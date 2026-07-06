@@ -53,7 +53,11 @@ func setup(is_large: bool) -> void:
 	_sparks.amount = SPARK_AMOUNT_LARGE if is_large else SPARK_AMOUNT_SMALL
 	_sparks.emitting = true
 	EventBus.audio_event_requested.emit("explosion_large" if is_large else "explosion_small")
-	EventBus.camera_shake_requested.emit(SHAKE_STRENGTH_LARGE if is_large else SHAKE_STRENGTH_SMALL)
+	# Shake is reserved for significant events (building destruction, the
+	# match-end sequence) -- small explosions fire on every unit death, and
+	# with 60 units a side that much shake reads as noise, not impact.
+	if is_large:
+		EventBus.camera_shake_requested.emit(SHAKE_STRENGTH_LARGE)
 
 
 func _process(delta: float) -> void:

@@ -73,8 +73,10 @@ func _physics_process(delta: float) -> void:
 
 
 func take_damage(amount: float, attacker: Node = null) -> void:
-	hp = max(0.0, hp - amount * Constants.armor_multiplier(armor))
+	var applied: float = amount * Constants.armor_multiplier(armor)
+	hp = max(0.0, hp - applied)
 	_animator.on_damaged()
+	VFXManager.spawn_damage_number(global_position + Vector3(0.0, 4.6, 0.0), applied)
 	EventBus.building_damaged.emit(self, amount, attacker)
 	if hp <= 0.0:
 		_destroy()
