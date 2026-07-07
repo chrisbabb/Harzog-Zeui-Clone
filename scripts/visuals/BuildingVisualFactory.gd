@@ -11,6 +11,10 @@ extends RefCounted
 
 
 static func create_hq_visual(team: int) -> Node3D:
+	var final_visual: Node3D = UnitVisualFactory.load_final_visual("hq", "buildings")
+	if final_visual != null:
+		return final_visual
+
 	var root := Node3D.new()
 	root.name = "Visual"
 
@@ -55,6 +59,10 @@ static func create_hq_visual(team: int) -> Node3D:
 
 
 static func create_outpost_visual(team: int) -> Node3D:
+	var final_visual: Node3D = UnitVisualFactory.load_final_visual("outpost", "buildings")
+	if final_visual != null:
+		return final_visual
+
 	var root := Node3D.new()
 	root.name = "Visual"
 

@@ -199,7 +199,9 @@ scripts/
   debug/       DebugPanel.gd (F1 in-game, debug builds only)
 data/units.json  Per-unit-type stats (cost, hp, speed, damage, range, ...)
 assets/          Placeholder art/audio directories (no shipped binary
-                 assets — see Known issues)
+                 assets — see Known issues). Final art drops into
+                 assets/art/final/ and replaces the procedural visuals
+                 automatically — see ASSET_PIPELINE.md
 tests/unit_tests/  Reserved for future automated tests
 ```
 
@@ -277,3 +279,7 @@ Neither requires manual housekeeping from the game controller.
 Every asset in this repository must be original or appropriately licensed.
 Do not add art, audio, maps, or text copied or adapted from any existing
 commercial game.
+
+For the full pipeline — recommended style, per-asset node-name contracts,
+import settings, and how final art replaces the procedural placeholders
+one file at a time — see [ASSET_PIPELINE.md](./ASSET_PIPELINE.md).
