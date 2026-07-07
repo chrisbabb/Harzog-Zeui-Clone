@@ -10,11 +10,9 @@ extends RefCounted
 ## on both) and "CaptureRing" (the animated capture ring, outpost only).
 
 
+## Pure procedural build -- final-asset resolution (with this as the
+## fallback) lives in AssetResolver.instantiate_building_visual().
 static func create_hq_visual(team: int) -> Node3D:
-	var final_visual: Node3D = UnitVisualFactory.load_final_visual("hq", "buildings")
-	if final_visual != null:
-		return final_visual
-
 	var root := Node3D.new()
 	root.name = "Visual"
 
@@ -58,11 +56,8 @@ static func create_hq_visual(team: int) -> Node3D:
 	return root
 
 
+## Pure procedural build -- see create_hq_visual's note on AssetResolver.
 static func create_outpost_visual(team: int) -> Node3D:
-	var final_visual: Node3D = UnitVisualFactory.load_final_visual("outpost", "buildings")
-	if final_visual != null:
-		return final_visual
-
 	var root := Node3D.new()
 	root.name = "Visual"
 

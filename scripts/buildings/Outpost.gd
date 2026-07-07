@@ -243,7 +243,8 @@ func _destroy() -> void:
 
 ## Clears the .tscn's placeholder TowerMesh/RingMesh (ProgressBarMesh stays
 ## -- it's a gameplay overlay, not part of the structural visual) and builds
-## this outpost's final-style visual via BuildingVisualFactory, then hands
+## this outpost's visual via AssetResolver (final asset when one exists
+## under assets/art/final/buildings/, procedural fallback), then hands
 ## the result to a fresh BuildingAnimator that owns all further per-frame
 ## motion/flash/ring animation for this outpost (see BuildingAnimator.gd).
 ## This is a procedural final-style placeholder model -- meant to be
@@ -257,7 +258,7 @@ func _build_visual() -> void:
 	if old_ring != null:
 		old_ring.queue_free()
 
-	_visual_root = BuildingVisualFactory.create_outpost_visual(team)
+	_visual_root = AssetResolver.instantiate_building_visual(Constants.BuildingType.OUTPOST, team)
 	add_child(_visual_root)
 
 	_animator = BuildingAnimator.new()

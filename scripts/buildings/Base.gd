@@ -207,7 +207,8 @@ func _update_health_bar() -> void:
 
 
 ## Clears the .tscn's placeholder BodyMesh/TowerMesh and builds this HQ's
-## final-style visual via BuildingVisualFactory, then hands the result to a
+## visual via AssetResolver (final asset when one exists under
+## assets/art/final/buildings/, procedural fallback), then hands the result to a
 ## fresh BuildingAnimator that owns all further per-frame motion/flash
 ## animation for this HQ (see BuildingAnimator.gd). This is a procedural
 ## final-style placeholder model -- meant to be replaced by an authored
@@ -220,7 +221,7 @@ func _build_visual() -> void:
 	if old_tower != null:
 		old_tower.queue_free()
 
-	_visual_root = BuildingVisualFactory.create_hq_visual(team)
+	_visual_root = AssetResolver.instantiate_building_visual(building_type, team)
 	add_child(_visual_root)
 
 	_animator = BuildingAnimator.new()

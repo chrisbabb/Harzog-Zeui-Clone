@@ -95,14 +95,16 @@ func _build_terrain() -> void:
 
 
 func _build_buildings() -> void:
-	var player_hq: Node3D = BuildingVisualFactory.create_hq_visual(Constants.Team.PLAYER)
+	var player_hq: Node3D = AssetResolver.instantiate_building_visual(
+		Constants.BuildingType.HQ, Constants.Team.PLAYER)
 	player_hq.position = Vector3(-14.0, 0.0, 6.0)
 	player_hq.rotation.y = 0.6
 	add_child(player_hq)
 
 	# Far corner, mostly swallowed by fog -- reads as "enemy territory over
 	# the horizon" rather than a symmetric mirror base.
-	var enemy_hq: Node3D = BuildingVisualFactory.create_hq_visual(Constants.Team.ENEMY)
+	var enemy_hq: Node3D = AssetResolver.instantiate_building_visual(
+		Constants.BuildingType.HQ, Constants.Team.ENEMY)
 	enemy_hq.position = Vector3(34.0, 0.0, -26.0)
 	enemy_hq.rotation.y = -2.2
 	add_child(enemy_hq)
@@ -113,7 +115,8 @@ func _build_buildings() -> void:
 
 
 func _add_outpost(outpost_position: Vector3, team: int, ring_phase: float) -> void:
-	var visual: Node3D = BuildingVisualFactory.create_outpost_visual(team)
+	var visual: Node3D = AssetResolver.instantiate_building_visual(
+		Constants.BuildingType.OUTPOST, team)
 	visual.position = outpost_position
 	add_child(visual)
 
@@ -148,7 +151,7 @@ func _build_convoy() -> void:
 
 
 func _add_unit_visual(unit_type: int, team: int, unit_position: Vector3, yaw: float) -> Node3D:
-	var visual: Node3D = UnitVisualFactory.create_visual(unit_type, team)
+	var visual: Node3D = AssetResolver.instantiate_unit_visual(unit_type, team)
 	visual.position = unit_position
 	visual.rotation.y = yaw
 	add_child(visual)

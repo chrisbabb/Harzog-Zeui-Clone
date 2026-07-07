@@ -15,38 +15,11 @@ extends RefCounted
 
 const _BARREL_ROTATION: Vector3 = Vector3(-90.0, 0.0, 0.0)
 
-const FINAL_ART_ROOT: String = "res://assets/art/final"
 
-
-## Tries the hand-authored final asset for `file_base` under
-## assets/art/final/<subdir>/ -- a .tscn wrapper first (lets artists tune
-## materials/offsets in-editor), then a raw .glb -- and returns its
-## instantiated root, or null when no final asset exists so callers fall
-## back to their procedural build. Shared by BuildingVisualFactory. The
-## node-name contract final assets must follow is in ASSET_PIPELINE.md.
-static func load_final_visual(file_base: String, subdir: String) -> Node3D:
-	for extension in ["tscn", "glb"]:
-		var path: String = "%s/%s/%s.%s" % [FINAL_ART_ROOT, subdir, file_base, extension]
-		if not ResourceLoader.exists(path):
-			continue
-		var scene: PackedScene = ResourceLoader.load(path) as PackedScene
-		if scene == null:
-			continue
-		var instance: Node = scene.instantiate()
-		if instance is Node3D:
-			instance.name = "Visual"
-			return instance
-		if instance != null:
-			instance.free()
-	return null
-
-
+## Pure procedural build -- final-asset resolution (with this as the
+## fallback) lives in AssetResolver.instantiate_unit_visual(), the entry
+## point gameplay code uses.
 static func create_visual(unit_type: int, team: int) -> Node3D:
-	var final_visual: Node3D = load_final_visual(
-		Constants.UnitType.keys()[unit_type].to_lower(), "units")
-	if final_visual != null:
-		return final_visual
-
 	var root := Node3D.new()
 	root.name = "Visual"
 	match unit_type:

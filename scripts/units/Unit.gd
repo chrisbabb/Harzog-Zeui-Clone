@@ -545,7 +545,8 @@ func _formation_rank(type: int) -> int:
 
 ## Clears the .tscn's placeholder MeshInstance3D nodes (every mesh child at
 ## this point is one -- see the per-type .tscn files under scenes/units/)
-## and builds this unit's final-style visual via UnitVisualFactory, then
+## and builds this unit's visual via AssetResolver (final asset when one
+## exists under assets/art/final/units/, procedural fallback), then
 ## hands the result to a fresh UnitAnimator that owns all further per-frame
 ## motion/flash/recoil/death animation for this unit (see UnitAnimator.gd).
 ## These are procedural final-style placeholder models -- meant to be
@@ -555,7 +556,7 @@ func _build_visual() -> void:
 	for mesh in find_children("*", "MeshInstance3D", true, false):
 		mesh.queue_free()
 
-	_visual_root = UnitVisualFactory.create_visual(unit_type, team)
+	_visual_root = AssetResolver.instantiate_unit_visual(unit_type, team)
 	add_child(_visual_root)
 
 	_animator = UnitAnimator.new()
