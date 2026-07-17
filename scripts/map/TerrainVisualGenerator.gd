@@ -1,11 +1,17 @@
 class_name TerrainVisualGenerator
 extends RefCounted
-## Builds the full visual battlefield dressing: terrain zone tiling, roads
-## connecting HQs/outposts, boundary cliffs/ridges, gameplay obstacles (now
-## visually upgraded rock clusters), landing pads, team markers, and
-## scattered environmental decorations (rocks, wrecks, antennas, power
-## nodes, ...) -- then wires up ambient animation (pulse/rotate/blink) for
-## the parts that need it. Called once from MapGenerator.generate_battlefield().
+## Builds the full visual battlefield dressing: terrain zone tiling, a
+## per-map center feature (causeway/crater/frontline scar), roads connecting
+## HQs/outposts, boundary cliffs/ridges, gameplay obstacles (visually
+## upgraded rock clusters), landing pads, team markers, hand-placed set
+## pieces, and scattered environmental decorations -- then wires up ambient
+## animation (pulse/rotate/blink) for the parts that need it. Called once
+## from MapGenerator.generate_battlefield().
+##
+## Everything map-specific (palette, zone weighting, road color, cliff
+## density, decoration recipe, set pieces, center feature) comes from the
+## MapPresets entry passed in, so the three maps read visually distinct
+## without this file knowing which map is which.
 ##
 ## All placement randomness is seeded from GameState.map_seed, so a given
 ## match's battlefield dressing (down to individual prop positions) is
@@ -19,14 +25,12 @@ extends RefCounted
 const _ZONE_COLS: int = 6
 const _ZONE_ROWS: int = 5
 const _ZONE_THICKNESS: float = 0.02
-const _SCORCHED_ZONE_COLOR: Color = Color(0.1, 0.08, 0.07)
 
 enum _ZoneKind { GRASS, DIRT, METAL, SCORCHED }
 
 const _ROAD_WIDTH: float = 5.0
 const _ROAD_SPUR_WIDTH: float = 3.5
 
-const _CLIFF_COUNT: int = 4
 const _CLIFF_LENGTH_RANGE: Vector2 = Vector2(14.0, 26.0)
 const _CLIFF_HEIGHT: float = 3.0
 const _CLIFF_EDGE_MARGIN: float = 6.0
@@ -43,16 +47,25 @@ const _TEAM_MARKER_OFFSET: float = 6.0
 
 const _SCATTER_ATTEMPTS_PER_DECORATION: int = 6
 const _DECORATION_MIN_CLEARANCE: float = 9.0
-## Kind name -> how many to scatter across the map per match.
-const _DECORATION_COUNTS: Dictionary = {
-	"rock_cluster": 6,
-	"wreck": 4,
-	"antenna": 3,
-	"power_node": 5,
-	"crate_stack": 4,
-	"energy_pylon": 2,
-	"scorch_mark": 5,
-}
+## Hand-placed set pieces are deliberately closer to the action than
+## scattered props, but still comfortably outside the 6.0 capture radius.
+const _FIXED_DECORATION_MIN_CLEARANCE: float = 8.0
+
+# Center features are all flat, collisionless ground reads (tallest is the
+# causeway's 0.08 edge strip): stacked heights interleave with the 0.02
+# zone tiles, 0.04 roads, and 0.06 landing pads so nothing z-fights.
+const _BRIDGE_BAND_SIZE: Vector3 = Vector3(24.0, 0.055, 9.0)
+const _BRIDGE_EDGE_SIZE: Vector3 = Vector3(24.0, 0.08, 0.3)
+const _BRIDGE_DECK_COLOR: Color = Color(0.23, 0.24, 0.26)
+const _CRATER_CENTER: Vector3 = Vector3(2.0, 0.0, 2.0)
+const _CRATER_OUTER_RADIUS: float = 26.0
+const _CRATER_INNER_RADIUS: float = 15.0
+const _CRATER_OUTER_COLOR: Color = Color(0.16, 0.15, 0.14)
+const _CRATER_INNER_COLOR: Color = Color(0.11, 0.1, 0.1)
+const _FRONT_SCAR_SIZE: Vector3 = Vector3(6.0, 0.028, 92.0)
+const _FRONT_SCAR_COLOR: Color = Color(0.09, 0.08, 0.08)
+const _FRONT_SCAR_FLANK_SIZE: Vector3 = Vector3(2.5, 0.024, 60.0)
+const _FRONT_SCAR_FLANK_COLOR: Color = Color(0.13, 0.12, 0.11)
 
 const _PULSE_ENERGY_LOW: float = 0.8
 const _PULSE_ENERGY_HIGH: float = 2.2
@@ -60,11 +73,12 @@ const _PULSE_DURATION_RANGE: Vector2 = Vector2(1.2, 2.2)
 const _ROTATION_DURATION_RANGE: Vector2 = Vector2(6.0, 12.0)
 const _BLINK_INTERVAL_RANGE: Vector2 = Vector2(0.6, 1.4)
 
-static var _scorched_zone_material: StandardMaterial3D
-
 
 static func generate(world_root: Node3D, player_hq_position: Vector3, enemy_hq_position: Vector3,
-		outpost_positions: Array, obstacle_positions: Array) -> void:
+		outpost_positions: Array, obstacle_positions: Array, preset: Dictionary = {}) -> void:
+	if preset.is_empty():
+		preset = MapPresets.get_preset(GameState.selected_map)
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GameState.map_seed
 
@@ -76,13 +90,15 @@ static func generate(world_root: Node3D, player_hq_position: Vector3, enemy_hq_p
 	dressing_root.name = "BattlefieldDressing"
 	world_root.add_child(dressing_root)
 
-	dressing_root.add_child(_build_zones(rng))
-	dressing_root.add_child(_build_roads(player_hq_position, enemy_hq_position, outpost_positions))
-	dressing_root.add_child(_build_cliffs(rng, exclusion_points))
+	dressing_root.add_child(_build_zones(rng, preset))
+	dressing_root.add_child(_build_center_feature(preset))
+	dressing_root.add_child(_build_roads(player_hq_position, enemy_hq_position, outpost_positions, preset))
+	dressing_root.add_child(_build_cliffs(rng, exclusion_points, preset))
 	_build_obstacles(dressing_root, obstacle_positions)
 	_build_landing_pads(dressing_root, player_hq_position, enemy_hq_position, outpost_positions)
 	_build_team_markers(dressing_root, player_hq_position, enemy_hq_position)
-	_scatter_decorations(dressing_root, rng, exclusion_points)
+	_build_fixed_decorations(dressing_root, rng, preset, exclusion_points)
+	_scatter_decorations(dressing_root, rng, exclusion_points, preset)
 
 	_wire_animations(dressing_root, rng)
 
@@ -94,10 +110,15 @@ static func generate(world_root: Node3D, player_hq_position: Vector3, enemy_hq_p
 ## Weighted-random (not checkerboard) zone tiling so the ground reads as
 ## hand-painted rather than mechanically patterned. Scorched/dirt zones lean
 ## toward the map's center column, where outposts cluster and fighting is
-## heaviest; the rear areas near each HQ stay mostly grass.
-static func _build_zones(rng: RandomNumberGenerator) -> Node3D:
+## heaviest; the rear areas near each HQ stay mostly base-tone. Colors and
+## weights come from the preset, so each map's ground reads distinct (Green
+## Divide's grass fields, Iron Basin's plate floor, Ash Line's ash).
+static func _build_zones(rng: RandomNumberGenerator, preset: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.name = "TerrainZones"
+
+	var zone_materials: Dictionary = _make_zone_materials(preset)
+	var zone_weights: Dictionary = preset["zone_weights"]
 
 	var half_length: float = Constants.ARENA_LENGTH * 0.5
 	var half_width: float = Constants.ARENA_WIDTH * 0.5
@@ -112,17 +133,17 @@ static func _build_zones(rng: RandomNumberGenerator) -> Node3D:
 				_ZONE_THICKNESS * 0.5,
 				-half_width + (row + 0.5) * cell_size_z
 			)
-			var kind: int = _pick_zone_kind(rng, center_bias)
+			var kind: int = _pick_zone_kind(rng, center_bias, zone_weights)
 			root.add_child(_build_material_slab(center, Vector3(cell_size_x, _ZONE_THICKNESS, cell_size_z),
-				_zone_material(kind)))
+				zone_materials[kind]))
 
 	return root
 
 
-static func _pick_zone_kind(rng: RandomNumberGenerator, center_bias: float) -> int:
-	var scorched_chance: float = 0.04 + center_bias * 0.14
-	var dirt_chance: float = 0.22
-	var metal_chance: float = 0.1
+static func _pick_zone_kind(rng: RandomNumberGenerator, center_bias: float, weights: Dictionary) -> int:
+	var scorched_chance: float = weights["scorched_base"] + center_bias * weights["scorched_center_bonus"]
+	var dirt_chance: float = weights["dirt"]
+	var metal_chance: float = weights["metal"]
 
 	var roll: float = rng.randf()
 	if roll < scorched_chance:
@@ -136,23 +157,97 @@ static func _pick_zone_kind(rng: RandomNumberGenerator, center_bias: float) -> i
 	return _ZoneKind.GRASS
 
 
-static func _zone_material(kind: int) -> StandardMaterial3D:
-	match kind:
-		_ZoneKind.DIRT:
-			return MaterialLibrary.terrain_dirt()
-		_ZoneKind.METAL:
-			return MaterialLibrary.terrain_road()
-		_ZoneKind.SCORCHED:
-			return _scorched_material()
-		_:
-			return MaterialLibrary.terrain_grass()
+## Fresh materials per generate() call rather than MaterialLibrary's shared
+## cached instances: every map recolors the whole ground plane, and sharing
+## would leak one map's palette into everything else using those materials.
+## The 30 zone tiles all reference these same four instances, so the cost
+## stays four materials per match.
+static func _make_zone_materials(preset: Dictionary) -> Dictionary:
+	var colors: Dictionary = preset["zone_colors"]
+	return {
+		_ZoneKind.GRASS: _matte_material(colors["grass"]),
+		_ZoneKind.DIRT: _matte_material(colors["dirt"]),
+		_ZoneKind.METAL: _matte_material(colors["metal"]),
+		_ZoneKind.SCORCHED: _matte_material(colors["scorched"]),
+	}
 
 
-static func _scorched_material() -> StandardMaterial3D:
-	if _scorched_zone_material == null:
-		_scorched_zone_material = StandardMaterial3D.new()
-		_scorched_zone_material.albedo_color = _SCORCHED_ZONE_COLOR
-	return _scorched_zone_material
+static func _matte_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	return material
+
+
+# ---------------------------------------------------------------------------
+# Center feature -- each map's single hand-authored landmark
+# ---------------------------------------------------------------------------
+
+## All three variants are flat, collisionless ground reads, so they can sit
+## in the middle of the play space -- even underneath outposts, roads, and
+## landing pads -- without touching navigation, spawns, or capture zones.
+static func _build_center_feature(preset: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "CenterFeature"
+	match preset.get("center_feature", ""):
+		"bridge_band":
+			_build_bridge_band(root)
+		"crater":
+			_build_crater(root)
+		"front_scar":
+			_build_front_scar(root)
+	return root
+
+
+## Green Divide: a widened causeway plaza where the HQ-to-HQ spine road
+## crosses the center line, edged with neutral glow strips -- the "central
+## bridge" the map is named for. The deck sits just above the 0.04-tall
+## road slab so it reads as deliberately paved, and the central outpost's
+## landing pad (top 0.06) still renders above it.
+static func _build_bridge_band(root: Node3D) -> void:
+	root.add_child(_build_material_slab(Vector3(0.0, _BRIDGE_BAND_SIZE.y * 0.5, 0.0),
+		_BRIDGE_BAND_SIZE, _matte_material(_BRIDGE_DECK_COLOR)))
+
+	for side in [-1.0, 1.0]:
+		var edge_z: float = side * (_BRIDGE_BAND_SIZE.z * 0.5 - _BRIDGE_EDGE_SIZE.z * 0.5)
+		root.add_child(_build_material_slab(Vector3(0.0, _BRIDGE_EDGE_SIZE.y * 0.5, edge_z),
+			_BRIDGE_EDGE_SIZE, MaterialLibrary.neutral_emissive()))
+
+
+## Iron Basin: the basin itself -- a huge scorched double-ring depression
+## dominating mid-field, slightly off-center so it doesn't read as a
+## compass rose. Flat discs rather than real geometry, so the "crater" is
+## purely a ground read that units drive straight across.
+static func _build_crater(root: Node3D) -> void:
+	root.add_child(_flat_disc(_CRATER_CENTER, _CRATER_OUTER_RADIUS, 0.024, _CRATER_OUTER_COLOR))
+	root.add_child(_flat_disc(_CRATER_CENTER, _CRATER_INNER_RADIUS, 0.03, _CRATER_INNER_COLOR))
+
+
+## Ash Line: the no-man's-land scar -- a long charred strip running the
+## width of the arena at x = 0 where the two sides grind against each
+## other, flanked by two shorter, fainter burn lines.
+static func _build_front_scar(root: Node3D) -> void:
+	root.add_child(_build_material_slab(Vector3(0.0, _FRONT_SCAR_SIZE.y * 0.5, 0.0),
+		_FRONT_SCAR_SIZE, _matte_material(_FRONT_SCAR_COLOR)))
+
+	for side in [-1.0, 1.0]:
+		root.add_child(_build_material_slab(
+			Vector3(side * 6.0, _FRONT_SCAR_FLANK_SIZE.y * 0.5, 0.0),
+			_FRONT_SCAR_FLANK_SIZE, _matte_material(_FRONT_SCAR_FLANK_COLOR)))
+
+
+## A flat ground disc whose base sits on the ground plane and whose top
+## lands at top_height -- the disc equivalent of _build_material_slab.
+static func _flat_disc(center: Vector3, radius: float, top_height: float, color: Color) -> MeshInstance3D:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius
+	mesh.bottom_radius = radius
+	mesh.height = top_height
+	mesh.radial_segments = 40
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = mesh
+	mesh_instance.material_override = _matte_material(color)
+	mesh_instance.position = center + Vector3(0.0, top_height * 0.5, 0.0)
+	return mesh_instance
 
 
 # ---------------------------------------------------------------------------
@@ -165,16 +260,21 @@ static func _scorched_material() -> StandardMaterial3D:
 ## spur straight to that HQ; outposts in the middle naturally bridge to
 ## their nearest neighboring outpost instead, so the network reads as
 ## "nearby outposts to their HQ, middle outposts bridging the two sides"
-## without hand-authoring per-map road topology.
-static func _build_roads(player_hq_position: Vector3, enemy_hq_position: Vector3, outpost_positions: Array) -> Node3D:
+## without hand-authoring per-map road topology. Surface color comes from
+## the preset (Iron Basin's darker metal roads, Green Divide's pale ones).
+static func _build_roads(player_hq_position: Vector3, enemy_hq_position: Vector3,
+		outpost_positions: Array, preset: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Roads"
 
-	root.add_child(MapDecorations.create_road_segment(player_hq_position, enemy_hq_position, _ROAD_WIDTH))
+	var road_color: Color = preset["road_color"]
+	root.add_child(MapDecorations.create_road_segment(player_hq_position, enemy_hq_position,
+		_ROAD_WIDTH, road_color))
 
 	for outpost_position in outpost_positions:
 		var nearest: Vector3 = _nearest_landmark(outpost_position, player_hq_position, enemy_hq_position, outpost_positions)
-		root.add_child(MapDecorations.create_road_segment(outpost_position, nearest, _ROAD_SPUR_WIDTH))
+		root.add_child(MapDecorations.create_road_segment(outpost_position, nearest,
+			_ROAD_SPUR_WIDTH, road_color))
 
 	return root
 
@@ -208,14 +308,18 @@ static func _nearest_landmark(from: Vector3, player_hq: Vector3, enemy_hq: Vecto
 ## Intentionally has no collision at all (unlike MAP_LAYOUTS' obstacles,
 ## which are explicitly gameplay-relevant) -- these exist purely to frame
 ## the battlefield's boundary for screenshots, never to block movement.
-static func _build_cliffs(rng: RandomNumberGenerator, exclusion_points: Array[Vector3]) -> Node3D:
+## Count comes from the preset: Iron Basin rings its crater with more,
+## Ash Line's open wasteland gets fewer.
+static func _build_cliffs(rng: RandomNumberGenerator, exclusion_points: Array[Vector3],
+		preset: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Cliffs"
 
 	var half_length: float = Constants.ARENA_LENGTH * 0.5
 	var half_width: float = Constants.ARENA_WIDTH * 0.5
 
-	for i in range(_CLIFF_COUNT):
+	var cliff_count: int = preset["cliff_count"]
+	for i in range(cliff_count):
 		var side: float = 1.0 if i % 2 == 0 else -1.0
 		var x: float = rng.randf_range(-half_length * 0.7, half_length * 0.7)
 		var z: float = side * (half_width - _CLIFF_EDGE_MARGIN)
@@ -334,22 +438,45 @@ static func _team_marker(position: Vector3, team: int) -> Node3D:
 
 
 # ---------------------------------------------------------------------------
-# Scattered ambient decorations
+# Hand-placed set pieces + scattered ambient decorations
 # ---------------------------------------------------------------------------
 
-## Places every prop kind in _DECORATION_COUNTS at random (seeded) spots,
-## rejecting any candidate too close to an HQ, outpost, obstacle, or an
-## already-placed decoration -- keeping capture zones, spawn zones, and the
-## general play area clear per the "no blocking navigation" rule. Since
-## placement is a single unmirrored random walk across the whole arena
-## (never reflected across the center line), the result reads asymmetric
-## and hand-placed rather than procedurally uniform.
-static func _scatter_decorations(dressing_root: Node3D, rng: RandomNumberGenerator, exclusion_points: Array[Vector3]) -> void:
+## The preset's hand-placed set pieces (Iron Basin's vents and pipes, Ash
+## Line's warning lights along the scar, ...) -- the props that carry each
+## map's identity, guaranteed present regardless of scatter luck. Their
+## positions are hand-verified against MAP_LAYOUTS, but each one is still
+## defensively re-checked against the live exclusion list so a future
+## layout tweak can only ever drop a set piece, never bury a capture zone
+## under one. Placed positions join exclusion_points so the scatter pass
+## then avoids them like any other landmark.
+static func _build_fixed_decorations(dressing_root: Node3D, rng: RandomNumberGenerator,
+		preset: Dictionary, exclusion_points: Array[Vector3]) -> void:
+	for entry in preset["fixed_decorations"]:
+		var position: Vector3 = entry["position"]
+		if not _is_clear(position, exclusion_points, _FIXED_DECORATION_MIN_CLEARANCE):
+			continue
+		var decoration: Node3D = _build_decoration(entry["kind"], position, rng, Constants.Team.NEUTRAL)
+		if decoration == null:
+			continue
+		dressing_root.add_child(decoration)
+		exclusion_points.append(position)
+
+
+## Places every prop kind in the preset's decoration recipe at random
+## (seeded) spots, rejecting any candidate too close to an HQ, outpost,
+## obstacle, set piece, or an already-placed decoration -- keeping capture
+## zones, spawn zones, and the general play area clear per the "no blocking
+## navigation" rule. Since placement is a single unmirrored random walk
+## across the whole arena (never reflected across the center line), the
+## result reads asymmetric and hand-placed rather than procedurally uniform.
+static func _scatter_decorations(dressing_root: Node3D, rng: RandomNumberGenerator,
+		exclusion_points: Array[Vector3], preset: Dictionary) -> void:
 	var placed_points: Array[Vector3] = []
 	placed_points.append_array(exclusion_points)
 
-	for kind in _DECORATION_COUNTS.keys():
-		var count: int = _DECORATION_COUNTS[kind]
+	var decoration_counts: Dictionary = preset["decoration_counts"]
+	for kind in decoration_counts.keys():
+		var count: int = decoration_counts[kind]
 		for i in range(count):
 			var candidate: Variant = _find_scatter_position(rng, placed_points)
 			if candidate == null:
@@ -395,6 +522,20 @@ static func _build_decoration(kind: String, position: Vector3, rng: RandomNumber
 			return MapDecorations.create_energy_pylon(position)
 		"scorch_mark":
 			return MapDecorations.create_scorch_mark(position, rng.randf_range(2.5, 4.5))
+		"metal_plate":
+			return MapDecorations.create_metal_plate(position)
+		"pipe_run":
+			return MapDecorations.create_pipe_run(position, rng.randf_range(5.0, 8.0))
+		"glow_vent":
+			return MapDecorations.create_glow_vent(position)
+		"broken_machine":
+			return MapDecorations.create_broken_machine(position)
+		"warning_light":
+			return MapDecorations.create_warning_light(position)
+		"ruined_structure":
+			return MapDecorations.create_ruined_structure(position)
+		"smoke_column":
+			return MapDecorations.create_smoke_column(position)
 		_:
 			return null
 

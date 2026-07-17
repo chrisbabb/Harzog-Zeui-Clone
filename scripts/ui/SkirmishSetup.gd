@@ -9,7 +9,6 @@ const MAIN_MENU_SCENE_PATH: String = "res://scenes/ui/MainMenu.tscn"
 
 const MODE_LABELS: Array[String] = ["Single Player vs AI", "Local Multiplayer"]
 const SPLIT_LABELS: Array[String] = ["Vertical (Side by Side)", "Horizontal (Top / Bottom)"]
-const MAP_LABELS: Array[String] = ["Green Divide", "Iron Basin", "Ash Line"]
 const DIFFICULTY_LABELS: Array[String] = ["Easy", "Normal", "Hard"]
 const STARTING_CREDITS_VALUES: Array[int] = [500, 800, 1200]
 const MATCH_SPEED_LABELS: Array[String] = ["Normal", "Fast"]
@@ -21,6 +20,9 @@ const OUTPOST_COUNT_VALUES: Array[int] = [5, 7, 9]
 @onready var difficulty_label: Label = $Panel/VBoxContainer/DifficultyLabel
 @onready var difficulty_option: OptionButton = $Panel/VBoxContainer/DifficultyOptionButton
 @onready var map_option: OptionButton = $Panel/VBoxContainer/MapOptionButton
+@onready var map_name_label: Label = $Panel/VBoxContainer/MapInfoPanel/MapInfoMargin/MapInfoVBox/MapNameLabel
+@onready var map_stats_label: Label = $Panel/VBoxContainer/MapInfoPanel/MapInfoMargin/MapInfoVBox/MapStatsLabel
+@onready var map_desc_label: Label = $Panel/VBoxContainer/MapInfoPanel/MapInfoMargin/MapInfoVBox/MapDescLabel
 @onready var starting_credits_option: OptionButton = $Panel/VBoxContainer/StartingCreditsOptionButton
 @onready var match_speed_option: OptionButton = $Panel/VBoxContainer/MatchSpeedOptionButton
 @onready var outpost_count_option: OptionButton = $Panel/VBoxContainer/OutpostCountOptionButton
@@ -32,8 +34,10 @@ func _ready() -> void:
 	_populate_options()
 	_load_defaults()
 	_refresh_mode_visibility()
+	_refresh_map_info()
 
 	mode_option.item_selected.connect(_on_mode_selected)
+	map_option.item_selected.connect(_on_map_selected)
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 	start_button.grab_focus()
@@ -44,8 +48,8 @@ func _populate_options() -> void:
 		mode_option.add_item(label)
 	for label in SPLIT_LABELS:
 		split_option.add_item(label)
-	for label in MAP_LABELS:
-		map_option.add_item(label)
+	for map_id in MapPresets.all_map_ids():
+		map_option.add_item(MapPresets.get_preset(map_id)["name"])
 	for label in DIFFICULTY_LABELS:
 		difficulty_option.add_item(label)
 	for value in STARTING_CREDITS_VALUES:
@@ -59,7 +63,7 @@ func _populate_options() -> void:
 func _load_defaults() -> void:
 	mode_option.select(clamp(GameState.game_mode, 0, MODE_LABELS.size() - 1))
 	split_option.select(clamp(GameState.split_direction, 0, SPLIT_LABELS.size() - 1))
-	map_option.select(clamp(GameState.selected_map, 0, MAP_LABELS.size() - 1))
+	map_option.select(clamp(GameState.selected_map, 0, map_option.item_count - 1))
 	difficulty_option.select(clamp(SaveManager.difficulty, 0, DIFFICULTY_LABELS.size() - 1))
 	starting_credits_option.select(_index_of_int(STARTING_CREDITS_VALUES, GameState.selected_starting_credits, 1))
 	match_speed_option.select(clamp(GameState.selected_match_speed, 0, MATCH_SPEED_LABELS.size() - 1))
@@ -73,6 +77,24 @@ func _index_of_int(values: Array[int], value: int, fallback_index: int) -> int:
 
 func _on_mode_selected(_index: int) -> void:
 	_refresh_mode_visibility()
+
+
+## Picking a map also jumps the outpost dropdown to that map's designed
+## count (Green Divide 9, Iron Basin 7, Ash Line 5); the player can still
+## override it afterwards.
+func _on_map_selected(index: int) -> void:
+	var preset: Dictionary = MapPresets.get_preset(index)
+	outpost_count_option.select(
+		_index_of_int(OUTPOST_COUNT_VALUES, preset["default_outposts"], outpost_count_option.selected))
+	_refresh_map_info()
+
+
+func _refresh_map_info() -> void:
+	var preset: Dictionary = MapPresets.get_preset(map_option.selected)
+	map_name_label.text = preset["name"]
+	map_stats_label.text = "Outposts: %d    Map difficulty: %s" % [
+		preset["default_outposts"], preset["difficulty"]]
+	map_desc_label.text = preset["description"]
 
 
 func _refresh_mode_visibility() -> void:

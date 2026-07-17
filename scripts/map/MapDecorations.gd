@@ -40,6 +40,35 @@ const _ROAD_LIGHT_SPACING: float = 25.0
 const _ROAD_LIGHT_RADIUS: float = 0.12
 
 const _SCORCH_HEIGHT: float = 0.015
+## Flat ground decals must start above TerrainVisualGenerator's 0.02-thick
+## zone tiles (or they'd be buried invisibly inside them) while staying
+## below the 0.04-tall road slabs so roads still read as paved over them.
+const _DECAL_GROUND_OFFSET: float = 0.022
+
+const _PLATE_SIZE: Vector3 = Vector3(4.6, 0.1, 3.4)
+const _PLATE_RIVET_RADIUS: float = 0.07
+
+const _PIPE_RADIUS: float = 0.2
+const _PIPE_HEIGHT: float = 0.5
+const _PIPE_SUPPORT_SIZE: Vector3 = Vector3(1.1, 0.5, 0.3)
+
+const _VENT_GRATE_RADIUS: float = 1.0
+const _VENT_GRATE_HEIGHT: float = 0.14
+const _VENT_GLOW_COLOR: Color = Color(1.0, 0.5, 0.12)
+
+const _MACHINE_BODY_SIZE: Vector3 = Vector3(2.6, 1.7, 1.9)
+
+const _WARNING_POST_HEIGHT: float = 2.4
+const _WARNING_LAMP_RADIUS: float = 0.18
+
+const _RUIN_WALL_LENGTH: float = 3.4
+const _RUIN_WALL_HEIGHT: float = 2.4
+const _RUIN_WALL_THICKNESS: float = 0.35
+
+const _SMOKE_COLUMN_AMOUNT: int = 7
+const _SMOKE_COLUMN_LIFETIME: float = 3.2
+const _SMOKE_COLUMN_PARTICLE_SIZE: float = 0.8
+const _SMOKE_COLUMN_COLOR: Color = Color(0.1, 0.1, 0.11, 0.5)
 
 
 ## A cluster of irregular rock chunks. Purely decorative (no collision) by
@@ -192,7 +221,11 @@ static func create_energy_pylon(position: Vector3) -> Node3D:
 ## A flat road slab between two points with evenly spaced marker lights
 ## (named "Light0", "Light1", ...) along its length, for readability from
 ## the fixed camera angle and for the caller's blink animation.
-static func create_road_segment(start: Vector3, end: Vector3, width: float) -> Node3D:
+## surface_color tints the slab per map (Iron Basin's darker metal roads,
+## ...); Color can't be null, so a zero-alpha color is the "no override"
+## sentinel meaning "use the shared default road material".
+static func create_road_segment(start: Vector3, end: Vector3, width: float,
+		surface_color: Color = Color(0.0, 0.0, 0.0, 0.0)) -> Node3D:
 	var root := Node3D.new()
 	root.name = "RoadSegment"
 
@@ -207,7 +240,11 @@ static func create_road_segment(start: Vector3, end: Vector3, width: float) -> N
 	root.position = center
 	root.rotation.y = atan2(diff.x, diff.z)
 
-	_add_box(root, "Slab", Vector3(width, _ROAD_HEIGHT, length), Vector3.ZERO, MaterialLibrary.terrain_road())
+	var surface_material: StandardMaterial3D = MaterialLibrary.terrain_road()
+	if surface_color.a > 0.0:
+		surface_material = StandardMaterial3D.new()
+		surface_material.albedo_color = surface_color
+	_add_box(root, "Slab", Vector3(width, _ROAD_HEIGHT, length), Vector3.ZERO, surface_material)
 
 	var light_count: int = max(2, int(length / _ROAD_LIGHT_SPACING))
 	for i in range(light_count):
@@ -224,11 +261,13 @@ static func create_road_segment(start: Vector3, end: Vector3, width: float) -> N
 
 ## A dark, roughly-circular scorch decal flush with the ground -- purely
 ## visual and always thin enough that it never interferes with movement.
+## Raised by _DECAL_GROUND_OFFSET so the decal sits on top of the terrain
+## zone tiles instead of being buried inside them.
 static func create_scorch_mark(position: Vector3, radius: float) -> Node3D:
 	var rng := _rng_for(position)
 	var root := Node3D.new()
 	root.name = "ScorchMark"
-	root.position = position + Vector3(0.0, _SCORCH_HEIGHT * 0.5, 0.0)
+	root.position = position + Vector3(0.0, _DECAL_GROUND_OFFSET + _SCORCH_HEIGHT * 0.5, 0.0)
 	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
 
 	var mesh_instance := _add_cylinder(root, "Scorch", radius, radius * rng.randf_range(0.85, 1.0),
@@ -236,6 +275,217 @@ static func create_scorch_mark(position: Vector3, radius: float) -> Node3D:
 	(mesh_instance.mesh as CylinderMesh).radial_segments = 10
 
 	return root
+
+
+## A flat industrial deck plate with corner rivets -- factory flooring for
+## Iron Basin. Thin enough that units visually drive over it; never blocks.
+static func create_metal_plate(position: Vector3) -> Node3D:
+	var rng := _rng_for(position)
+	var root := Node3D.new()
+	root.name = "MetalPlate"
+	root.position = position
+	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	var size: Vector3 = _PLATE_SIZE * rng.randf_range(0.8, 1.15)
+	size.y = _PLATE_SIZE.y
+	_add_box(root, "Plate", size, Vector3(0.0, size.y * 0.5, 0.0), MaterialLibrary.dark_metal())
+
+	for corner in range(4):
+		var sign_x: float = 1.0 if corner % 2 == 0 else -1.0
+		var sign_z: float = 1.0 if corner < 2 else -1.0
+		_add_sphere(root, "Rivet%d" % corner, _PLATE_RIVET_RADIUS,
+			Vector3(sign_x * size.x * 0.42, size.y, sign_z * size.z * 0.42), MaterialLibrary.light_metal())
+
+	return root
+
+
+## A pair of parallel surface pipes on support blocks, running along the
+## prop's local Z with a random yaw. Callers keep length small (<= ~8) so a
+## run placed with standard clearance can never reach into a capture zone.
+static func create_pipe_run(position: Vector3, length: float = 7.0) -> Node3D:
+	var rng := _rng_for(position)
+	var root := Node3D.new()
+	root.name = "PipeRun"
+	root.position = position
+	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	for pipe_index in range(2):
+		var side: float = 1.0 if pipe_index == 0 else -1.0
+		var radius: float = _PIPE_RADIUS if pipe_index == 0 else _PIPE_RADIUS * 0.75
+		var pipe := _add_cylinder(root, "Pipe%d" % pipe_index, radius, radius, length,
+			Vector3(side * 0.3, _PIPE_HEIGHT, 0.0), MaterialLibrary.light_metal())
+		pipe.rotation_degrees.x = 90.0
+
+	var support_count: int = 3
+	for i in range(support_count):
+		var t: float = float(i) / float(support_count - 1)
+		var local_z: float = lerpf(-length * 0.5 + 0.4, length * 0.5 - 0.4, t)
+		_add_box(root, "Support%d" % i, _PIPE_SUPPORT_SIZE,
+			Vector3(0.0, _PIPE_SUPPORT_SIZE.y * 0.5, local_z), MaterialLibrary.dark_metal())
+
+	_add_cylinder(root, "Valve", 0.08, 0.08, 0.4,
+		Vector3(0.3, _PIPE_HEIGHT + 0.25, rng.randf_range(-length * 0.3, length * 0.3)),
+		MaterialLibrary.dark_metal())
+
+	return root
+
+
+## A round industrial floor vent glowing from inside. The emissive disc is
+## named "PulseCore" so TerrainVisualGenerator's animation pass gives it the
+## same slow breathing pulse as power nodes for free.
+static func create_glow_vent(position: Vector3) -> Node3D:
+	var rng := _rng_for(position)
+	var root := Node3D.new()
+	root.name = "GlowVent"
+	root.position = position
+	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	_add_cylinder(root, "Grate", _VENT_GRATE_RADIUS, _VENT_GRATE_RADIUS * 1.15, _VENT_GRATE_HEIGHT,
+		Vector3(0.0, _VENT_GRATE_HEIGHT * 0.5, 0.0), MaterialLibrary.dark_metal())
+
+	var glow_material := StandardMaterial3D.new()
+	glow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow_material.emission_enabled = true
+	glow_material.albedo_color = _VENT_GLOW_COLOR
+	glow_material.emission = _VENT_GLOW_COLOR
+	glow_material.emission_energy_multiplier = 1.4
+	_add_cylinder(root, "PulseCore", _VENT_GRATE_RADIUS * 0.6, _VENT_GRATE_RADIUS * 0.6, 0.05,
+		Vector3(0.0, _VENT_GRATE_HEIGHT + 0.02, 0.0), glow_material)
+
+	# Three bars across the glow so it reads as a grated vent, not a lamp.
+	for i in range(3):
+		_add_box(root, "Bar%d" % i, Vector3(_VENT_GRATE_RADIUS * 1.1, 0.04, 0.08),
+			Vector3(0.0, _VENT_GRATE_HEIGHT + 0.05, (float(i) - 1.0) * 0.35), MaterialLibrary.dark_metal())
+
+	return root
+
+
+## A dead industrial machine: tilted housing sunk into the ground, a fallen
+## drum, loose scrap, and a dying status lamp (named "Light" so the caller's
+## animation pass makes it blink).
+static func create_broken_machine(position: Vector3) -> Node3D:
+	var rng := _rng_for(position)
+	var root := Node3D.new()
+	root.name = "BrokenMachine"
+	root.position = position
+	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	var housing := _add_box(root, "Housing", _MACHINE_BODY_SIZE,
+		Vector3(0.0, _MACHINE_BODY_SIZE.y * 0.38, 0.0), MaterialLibrary.dark_metal())
+	housing.rotation_degrees = Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(6.0, 14.0))
+
+	var drum := _add_cylinder(root, "FallenDrum", 0.5, 0.5, 1.6,
+		Vector3(1.9, 0.5, rng.randf_range(-0.6, 0.6)), MaterialLibrary.light_metal())
+	drum.rotation_degrees = Vector3(90.0, rng.randf_range(0.0, 180.0), 0.0)
+
+	for i in range(3):
+		var angle: float = rng.randf_range(0.0, TAU)
+		var dist: float = rng.randf_range(1.4, 2.4)
+		var scrap := _add_box(root, "Scrap%d" % i, Vector3(0.4, 0.12, 0.5),
+			Vector3(cos(angle) * dist, 0.08, sin(angle) * dist), MaterialLibrary.dark_metal())
+		scrap.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	var lamp_material: StandardMaterial3D = MaterialLibrary.energy_red().duplicate()
+	lamp_material.emission_energy_multiplier = 0.9
+	_add_sphere(root, "Light", 0.12,
+		Vector3(-_MACHINE_BODY_SIZE.x * 0.3, _MACHINE_BODY_SIZE.y * 0.85, 0.0), lamp_material)
+
+	return root
+
+
+## A hazard post with a blinking red beacon (named "Light" for the caller's
+## blink pass) -- Ash Line's frontline warning markers.
+static func create_warning_light(position: Vector3) -> Node3D:
+	var rng := _rng_for(position)
+	var root := Node3D.new()
+	root.name = "WarningLight"
+	root.position = position
+	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	_add_cylinder(root, "Post", 0.07, 0.1, _WARNING_POST_HEIGHT,
+		Vector3(0.0, _WARNING_POST_HEIGHT * 0.5, 0.0), MaterialLibrary.dark_metal())
+	_add_box(root, "Stripe", Vector3(0.16, 0.3, 0.16),
+		Vector3(0.0, _WARNING_POST_HEIGHT * 0.55, 0.0), MaterialLibrary.warning_yellow())
+	_add_box(root, "Head", Vector3(0.3, 0.22, 0.3),
+		Vector3(0.0, _WARNING_POST_HEIGHT + 0.05, 0.0), MaterialLibrary.dark_metal())
+	_add_sphere(root, "Light", _WARNING_LAMP_RADIUS,
+		Vector3(0.0, _WARNING_POST_HEIGHT + 0.28, 0.0), MaterialLibrary.energy_red())
+
+	return root
+
+
+## The scorched corner of a destroyed building: two charred wall slabs at a
+## right angle -- one mostly standing, one collapsed to a stub -- over a
+## char patch with rubble spill. Purely visual, like all wreckage.
+static func create_ruined_structure(position: Vector3) -> Node3D:
+	var rng := _rng_for(position)
+	var root := Node3D.new()
+	root.name = "RuinedStructure"
+	root.position = position
+	root.rotation_degrees.y = rng.randf_range(0.0, 360.0)
+
+	var tall_height: float = _RUIN_WALL_HEIGHT * rng.randf_range(0.85, 1.0)
+	var tall_wall := _add_box(root, "WallA",
+		Vector3(_RUIN_WALL_LENGTH, tall_height, _RUIN_WALL_THICKNESS),
+		Vector3(0.0, tall_height * 0.5, 0.0), MaterialLibrary.dark_metal())
+	tall_wall.rotation_degrees.z = rng.randf_range(-3.0, 3.0)
+
+	var stub_height: float = _RUIN_WALL_HEIGHT * rng.randf_range(0.3, 0.5)
+	_add_box(root, "WallB", Vector3(_RUIN_WALL_THICKNESS, stub_height, _RUIN_WALL_LENGTH),
+		Vector3(-_RUIN_WALL_LENGTH * 0.5, stub_height * 0.5, _RUIN_WALL_LENGTH * 0.5),
+		MaterialLibrary.dark_metal())
+
+	_add_cylinder(root, "CharPatch", 2.0, 2.0, 0.03,
+		Vector3(-0.5, _DECAL_GROUND_OFFSET + 0.015, 0.5), MaterialLibrary.smoke_dark())
+
+	for i in range(3):
+		var angle: float = rng.randf_range(0.0, TAU)
+		var dist: float = rng.randf_range(0.8, 2.0)
+		var rubble := _add_box(root, "Rubble%d" % i, Vector3(0.5, 0.3, 0.45),
+			Vector3(cos(angle) * dist - 0.5, 0.15, sin(angle) * dist + 0.5), MaterialLibrary.dark_metal())
+		rubble.rotation_degrees = Vector3(rng.randf_range(-10.0, 10.0), rng.randf_range(0.0, 360.0), 0.0)
+
+	return root
+
+
+## A charred vent mound with a thin, persistent smoke column rising out of
+## it -- ambient battlefield haze, not tied to any damage system. Unlike
+## SmokePuff (one-shot, self-freeing), this emitter runs for the whole
+## match; preprocess makes the column already fully formed when the match
+## fades in instead of visibly starting up.
+static func create_smoke_column(position: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "SmokeColumn"
+	root.position = position
+
+	_add_cylinder(root, "Mound", 0.5, 1.1, 0.5, Vector3(0.0, 0.25, 0.0), MaterialLibrary.smoke_dark())
+
+	var particles := GPUParticles3D.new()
+	particles.name = "SmokeEmitter"
+	particles.amount = _SMOKE_COLUMN_AMOUNT
+	particles.lifetime = _SMOKE_COLUMN_LIFETIME
+	particles.preprocess = _SMOKE_COLUMN_LIFETIME
+	particles.local_coords = false
+	particles.draw_pass_1 = VFXParticleUtil.make_quad_mesh(_SMOKE_COLUMN_PARTICLE_SIZE)
+	particles.process_material = _make_smoke_column_material()
+	particles.position = Vector3(0.0, 0.45, 0.0)
+	root.add_child(particles)
+
+	return root
+
+
+static func _make_smoke_column_material() -> ParticleProcessMaterial:
+	var material := ParticleProcessMaterial.new()
+	material.direction = Vector3(0.0, 1.0, 0.0)
+	material.spread = 8.0
+	material.initial_velocity_min = 0.5
+	material.initial_velocity_max = 0.9
+	# Slight sideways acceleration so the column leans like wind-blown smoke.
+	material.gravity = Vector3(0.12, 0.4, 0.0)
+	material.scale_min = 0.7
+	material.scale_max = 1.5
+	material.color_ramp = VFXParticleUtil.make_fade_gradient(_SMOKE_COLUMN_COLOR)
+	return material
 
 
 # ---------------------------------------------------------------------------

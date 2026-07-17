@@ -92,12 +92,13 @@ const MAP_LAYOUTS: Dictionary = {
 	},
 }
 
-static func generate_battlefield(game_root: Node3D) -> void:
+static func generate_battlefield(game_root: Node3D, map_name: String = "") -> void:
 	var world_root: Node3D = game_root.get_node("WorldRoot")
 	var buildings_root: Node3D = world_root.get_node("BuildingsRoot")
 
+	var map_id: int = _resolve_map_id(map_name)
 	var layout: Dictionary = MAP_LAYOUTS.get(
-		GameState.selected_map, MAP_LAYOUTS[Constants.MapPreset.GREEN_DIVIDE]
+		map_id, MAP_LAYOUTS[Constants.MapPreset.GREEN_DIVIDE]
 	)
 	var player_hq_position: Vector3 = layout["player_hq"]
 	var enemy_hq_position: Vector3 = layout["enemy_hq"]
@@ -107,7 +108,7 @@ static func generate_battlefield(game_root: Node3D) -> void:
 	var obstacle_positions: Array = layout["obstacles"]
 
 	TerrainVisualGenerator.generate(world_root, player_hq_position, enemy_hq_position,
-		outpost_positions, obstacle_positions)
+		outpost_positions, obstacle_positions, MapPresets.get_preset(map_id))
 
 	buildings_root.add_child(create_hq(Constants.Team.PLAYER, player_hq_position))
 	buildings_root.add_child(create_hq(Constants.Team.ENEMY, enemy_hq_position))
@@ -116,6 +117,18 @@ static func generate_battlefield(game_root: Node3D) -> void:
 		buildings_root.add_child(create_outpost(outpost_position))
 
 	NavigationManager.rebake_navigation(game_root)
+
+
+## Callers normally rely on GameState.selected_map (set by SkirmishSetup);
+## passing a display name like "Iron Basin" overrides it -- for direct
+## scene launches, debug commands, or future campaign scripting.
+static func _resolve_map_id(map_name: String) -> int:
+	if map_name != "":
+		var named_id: int = MapPresets.find_by_name(map_name)
+		if named_id != -1:
+			return named_id
+		push_warning("MapGenerator: unknown map name '%s' -- using selected map instead" % map_name)
+	return GameState.selected_map
 
 
 static func create_hq(team: int, position: Vector3) -> Node3D:
